@@ -994,8 +994,8 @@ class SpacedRepetitionApp {
                 front: card.front,
                 back: card.back,
                 categoryId: card.category_id,
-                frontImage: card.front_image,
-                backImage: card.back_image,
+                frontImage: this.base64ToDataUrl(card.front_image),
+                backImage: this.base64ToDataUrl(card.back_image),
                 interval: card.interval,
                 repetitions: card.repetitions,
                 easeFactor: card.ease_factor,
@@ -1051,6 +1051,20 @@ class SpacedRepetitionApp {
         }
     }
 
+    // Helper functions for image data conversion
+    dataUrlToBase64(dataUrl) {
+        if (!dataUrl || !dataUrl.startsWith('data:')) return dataUrl;
+        const base64Index = dataUrl.indexOf('base64,');
+        if (base64Index === -1) return dataUrl;
+        return dataUrl.substring(base64Index + 7);
+    }
+
+    base64ToDataUrl(base64Data, mimeType = 'image/png') {
+        if (!base64Data) return null;
+        if (base64Data.startsWith('data:')) return base64Data; // Already a data URL
+        return `data:${mimeType};base64,${base64Data}`;
+    }
+
     async saveCard(card) {
         try {
             const cardData = {
@@ -1058,8 +1072,8 @@ class SpacedRepetitionApp {
                 front: card.front,
                 back: card.back,
                 categoryId: card.categoryId,
-                frontImage: card.frontImage,
-                backImage: card.backImage,
+                frontImage: this.dataUrlToBase64(card.frontImage),
+                backImage: this.dataUrlToBase64(card.backImage),
                 interval: card.interval,
                 repetitions: card.repetitions,
                 easeFactor: card.easeFactor,
@@ -1079,8 +1093,8 @@ class SpacedRepetitionApp {
                 front: card.front,
                 back: card.back,
                 categoryId: card.categoryId,
-                frontImage: card.frontImage,
-                backImage: card.backImage,
+                frontImage: this.dataUrlToBase64(card.frontImage),
+                backImage: this.dataUrlToBase64(card.backImage),
                 interval: card.interval,
                 repetitions: card.repetitions,
                 easeFactor: card.easeFactor,
@@ -1295,8 +1309,8 @@ class SpacedRepetitionApp {
                     front: cardData.front,
                     back: cardData.back,
                     categoryId: cardData.categoryId,
-                    frontImage: cardData.frontImage,
-                    backImage: cardData.backImage,
+                    frontImage: this.dataUrlToBase64(cardData.frontImage),
+                    backImage: this.dataUrlToBase64(cardData.backImage),
                     interval: cardData.interval,
                     repetitions: cardData.repetitions,
                     easeFactor: cardData.easeFactor,
@@ -1320,7 +1334,11 @@ class SpacedRepetitionApp {
                 };
                 this.cards.push(cardData);
                 
-                await apiClient.createCard(cardData);
+                await apiClient.createCard({
+                    ...cardData,
+                    frontImage: this.dataUrlToBase64(cardData.frontImage),
+                    backImage: this.dataUrlToBase64(cardData.backImage)
+                });
             }
 
             this.closeCardModal();
@@ -1674,7 +1692,8 @@ class SpacedRepetitionApp {
             const cardIndex = this.cards.findIndex(c => c.id === this.currentReviewCard.id);
             this.cards[cardIndex] = this.currentReviewCard;
 
-            this.saveCards();
+            // Save to database
+            this.saveCard(this.currentReviewCard);
             this.displayCardSide(this.isShowingBack ? 'back' : 'front');
         } else {
             // Card creation mode: save to temporary images
