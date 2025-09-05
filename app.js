@@ -989,6 +989,21 @@ class SpacedRepetitionApp {
         try {
             // Load cards from API
             const cardsData = await apiClient.getCards();
+            console.log('📥 loadData: Received cards from API:', cardsData.length, 'cards');
+            cardsData.forEach((card, index) => {
+                if (index < 3) { // Log first 3 cards
+                    console.log(`📥 loadData card ${index}:`, {
+                        id: card.id,
+                        front: card.front?.substring(0, 20) + '...',
+                        has_front_image: !!card.front_image,
+                        has_back_image: !!card.back_image,
+                        front_image_length: card.front_image?.length,
+                        back_image_length: card.back_image?.length,
+                        front_image_preview: card.front_image?.substring(0, 50) + '...'
+                    });
+                }
+            });
+            
             this.cards = cardsData.map(card => ({
                 id: card.id,
                 front: card.front,
@@ -1001,6 +1016,19 @@ class SpacedRepetitionApp {
                 easeFactor: card.ease_factor,
                 nextReview: new Date(card.next_review)
             }));
+            
+            console.log('📥 loadData: Processed cards:', this.cards.length, 'cards');
+            this.cards.forEach((card, index) => {
+                if (index < 3 && (card.frontImage || card.backImage)) {
+                    console.log(`📥 loadData processed card ${index}:`, {
+                        id: card.id,
+                        hasFrontImage: !!card.frontImage,
+                        hasBackImage: !!card.backImage,
+                        frontImageLength: card.frontImage?.length,
+                        backImageLength: card.backImage?.length
+                    });
+                }
+            });
 
             // Load categories from API
             const categoriesData = await apiClient.getCategories();
@@ -1053,19 +1081,75 @@ class SpacedRepetitionApp {
 
     // Helper functions for image data conversion
     dataUrlToBase64(dataUrl) {
-        if (!dataUrl || !dataUrl.startsWith('data:')) return dataUrl;
+        console.log('🔄 dataUrlToBase64 input:', {
+            type: typeof dataUrl,
+            isNull: dataUrl === null,
+            isUndefined: dataUrl === undefined,
+            length: dataUrl?.length,
+            startsWithData: dataUrl?.startsWith('data:'),
+            preview: dataUrl?.substring(0, 50) + '...'
+        });
+        
+        if (!dataUrl || !dataUrl.startsWith('data:')) {
+            console.log('🔄 dataUrlToBase64 returning unchanged:', dataUrl);
+            return dataUrl;
+        }
+        
         const base64Index = dataUrl.indexOf('base64,');
-        if (base64Index === -1) return dataUrl;
-        return dataUrl.substring(base64Index + 7);
+        if (base64Index === -1) {
+            console.log('🔄 dataUrlToBase64 no base64 found, returning unchanged');
+            return dataUrl;
+        }
+        
+        const result = dataUrl.substring(base64Index + 7);
+        console.log('🔄 dataUrlToBase64 result:', {
+            inputLength: dataUrl.length,
+            outputLength: result.length,
+            outputPreview: result.substring(0, 50) + '...'
+        });
+        return result;
     }
 
     base64ToDataUrl(base64Data, mimeType = 'image/png') {
-        if (!base64Data) return null;
-        if (base64Data.startsWith('data:')) return base64Data; // Already a data URL
-        return `data:${mimeType};base64,${base64Data}`;
+        console.log('🔄 base64ToDataUrl input:', {
+            type: typeof base64Data,
+            isNull: base64Data === null,
+            isUndefined: base64Data === undefined,
+            length: base64Data?.length,
+            startsWithData: base64Data?.startsWith('data:'),
+            preview: base64Data?.substring(0, 50) + '...'
+        });
+        
+        if (!base64Data) {
+            console.log('🔄 base64ToDataUrl returning null for empty input');
+            return null;
+        }
+        
+        if (base64Data.startsWith('data:')) {
+            console.log('🔄 base64ToDataUrl already a data URL, returning unchanged');
+            return base64Data;
+        }
+        
+        const result = `data:${mimeType};base64,${base64Data}`;
+        console.log('🔄 base64ToDataUrl result:', {
+            inputLength: base64Data.length,
+            outputLength: result.length,
+            mimeType: mimeType
+        });
+        return result;
     }
 
     async saveCard(card) {
+        console.log('💾 saveCard called with card:', {
+            id: card.id,
+            front: card.front?.substring(0, 20) + '...',
+            back: card.back?.substring(0, 20) + '...',
+            hasFrontImage: !!card.frontImage,
+            hasBackImage: !!card.backImage,
+            frontImagePreview: card.frontImage?.substring(0, 50) + '...',
+            backImagePreview: card.backImage?.substring(0, 50) + '...'
+        });
+        
         try {
             const cardData = {
                 id: card.id,
@@ -1080,10 +1164,22 @@ class SpacedRepetitionApp {
                 nextReview: card.nextReview
             };
 
+            console.log('💾 saveCard cardData after conversion:', {
+                id: cardData.id,
+                hasFrontImage: !!cardData.frontImage,
+                hasBackImage: !!cardData.backImage,
+                frontImageLength: cardData.frontImage?.length,
+                backImageLength: cardData.backImage?.length
+            });
+
             if (this.editingCardId) {
+                console.log('💾 saveCard updating existing card via API');
                 await apiClient.updateCard(card.id, cardData);
+                console.log('💾 saveCard API update successful');
             } else {
+                console.log('💾 saveCard creating new card via API');
                 await apiClient.createCard(cardData);
+                console.log('💾 saveCard API create successful');
             }
         } catch (error) {
             console.error('Failed to save card via API, falling back to localStorage:', error);
@@ -1281,6 +1377,13 @@ class SpacedRepetitionApp {
     }
 
     async saveCard() {
+        console.log('🎯 UI saveCard called - tempCardImages:', {
+            hasFront: !!this.tempCardImages.front,
+            hasBack: !!this.tempCardImages.back,
+            frontPreview: this.tempCardImages.front?.substring(0, 50) + '...',
+            backPreview: this.tempCardImages.back?.substring(0, 50) + '...'
+        });
+        
         const front = document.getElementById('front-text').value.trim();
         const back = document.getElementById('back-text').value.trim();
 
@@ -1303,6 +1406,11 @@ class SpacedRepetitionApp {
                     frontImage: this.tempCardImages.front,
                     backImage: this.tempCardImages.back
                 };
+                console.log('🎯 UI saveCard editing card:', {
+                    id: cardData.id,
+                    hasFrontImage: !!cardData.frontImage,
+                    hasBackImage: !!cardData.backImage
+                });
                 this.cards[cardIndex] = cardData;
                 
                 await apiClient.updateCard(cardData.id, {
@@ -2160,11 +2268,26 @@ class SpacedRepetitionApp {
     }
 
     saveCardImage() {
+        console.log('🖼️ saveCardImage called, currentImageSide:', this.currentImageSide);
         const img = document.querySelector('#card-image-generation-preview img');
-        if (!img) return;
+        if (!img) {
+            console.log('🖼️ saveCardImage: No image found in preview');
+            return;
+        }
+
+        console.log('🖼️ saveCardImage: Found image with src:', {
+            srcLength: img.src?.length,
+            srcPreview: img.src?.substring(0, 50) + '...'
+        });
 
         // Save to temporary card images
         this.tempCardImages[this.currentImageSide] = img.src;
+        
+        console.log('🖼️ saveCardImage: Updated tempCardImages:', {
+            side: this.currentImageSide,
+            hasFront: !!this.tempCardImages.front,
+            hasBack: !!this.tempCardImages.back
+        });
         
         // Update preview
         this.updateCardImagePreviews();
