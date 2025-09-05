@@ -1606,11 +1606,10 @@ class SpacedRepetitionApp {
                     throw new Error('No base64 image data found in response');
                 }
                 
-                // Return data URL and compress for storage
+                // Return data URL
                 const dataUrl = `data:${mimeType};base64,${base64Data}`;
                 
-                // Compress the image before returning
-                return await this.compressImage(dataUrl);
+                return dataUrl;
             } else {
                 throw new Error(`No image data found in API response. Response structure: ${JSON.stringify(data, null, 2)}`);
             }
