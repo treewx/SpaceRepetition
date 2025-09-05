@@ -1072,13 +1072,46 @@ class SpacedRepetitionApp {
                 await apiClient.createCard(cardData);
             }
         } catch (error) {
-            console.error('Failed to save card:', error);
-            throw error;
+            console.error('Failed to save card via API, falling back to localStorage:', error);
+            // Fallback to localStorage for local testing
+            const cardData = {
+                id: card.id,
+                front: card.front,
+                back: card.back,
+                categoryId: card.categoryId,
+                frontImage: card.frontImage,
+                backImage: card.backImage,
+                interval: card.interval,
+                repetitions: card.repetitions,
+                easeFactor: card.easeFactor,
+                nextReview: card.nextReview
+            };
+
+            if (this.editingCardId) {
+                // Update existing card
+                const cardIndex = this.cards.findIndex(c => c.id === card.id);
+                if (cardIndex !== -1) {
+                    this.cards[cardIndex] = cardData;
+                }
+            } else {
+                // Add new card
+                this.cards.push(cardData);
+            }
+            
+            this.saveCards();
         }
     }
 
     async saveCategories() {
         // Categories are saved individually through the API
+    }
+
+    saveCards() {
+        try {
+            localStorage.setItem('flashcards', JSON.stringify(this.cards));
+        } catch (error) {
+            console.error('Failed to save cards to localStorage:', error);
+        }
     }
 
     // Fallback method for localStorage
@@ -1305,8 +1338,11 @@ class SpacedRepetitionApp {
                 this.cards = this.cards.filter(c => c.id !== cardId);
                 this.updateUI();
             } catch (error) {
-                console.error('Failed to delete card:', error);
-                alert('Failed to delete card. Please try again.');
+                console.error('Failed to delete card via API, falling back to localStorage:', error);
+                // Fallback to localStorage for local testing
+                this.cards = this.cards.filter(c => c.id !== cardId);
+                this.saveCards();
+                this.updateUI();
             }
         }
     }
