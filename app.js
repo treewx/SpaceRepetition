@@ -978,14 +978,111 @@ class SpacedRepetitionApp {
         this.filteredSyllables = Object.keys(this.syllables);
     }
 
-    init() {
-        this.loadData();
+    async init() {
+        await this.loadData();
         this.bindEvents();
         this.updateUI();
     }
 
-    // Local Storage Methods
-    loadData() {
+    // Data Loading Methods
+    async loadData() {
+        try {
+            // Load cards from API
+            const cardsData = await apiClient.getCards();
+            this.cards = cardsData.map(card => ({
+                id: card.id,
+                front: card.front,
+                back: card.back,
+                categoryId: card.category_id,
+                frontImage: card.front_image,
+                backImage: card.back_image,
+                interval: card.interval,
+                repetitions: card.repetitions,
+                easeFactor: card.ease_factor,
+                nextReview: new Date(card.next_review)
+            }));
+
+            // Load categories from API
+            const categoriesData = await apiClient.getCategories();
+            this.categories = categoriesData.map(cat => ({
+                id: cat.id,
+                name: cat.name,
+                color: cat.color
+            }));
+
+            // Load syllables from API or initialize
+            await this.loadSyllables();
+            
+        } catch (error) {
+            console.error('Failed to load data from API:', error);
+            // Fallback to localStorage if API fails
+            this.loadDataFromLocalStorage();
+        }
+    }
+
+    async loadSyllables() {
+        try {
+            const syllablesData = await apiClient.getSyllables();
+            this.syllables = {};
+            
+            syllablesData.forEach(syllable => {
+                const key = `${syllable.base}_${syllable.tone}`;
+                this.syllables[key] = {
+                    base: syllable.base,
+                    tone: syllable.tone,
+                    syllable: syllable.syllable,
+                    examples: syllable.examples || [],
+                    description: syllable.description || '',
+                    imageUrl: syllable.image_url,
+                    imagePrompt: syllable.image_prompt || ''
+                };
+            });
+
+            this.filteredSyllables = Object.keys(this.syllables);
+            
+            // If no syllables found, initialize them
+            if (syllablesData.length === 0) {
+                await this.initializePinyinSyllablesInDB();
+            }
+        } catch (error) {
+            console.error('Failed to load syllables from API:', error);
+            // Initialize syllables locally
+            this.initializePinyinSyllables();
+        }
+    }
+
+    async saveCard(card) {
+        try {
+            const cardData = {
+                id: card.id,
+                front: card.front,
+                back: card.back,
+                categoryId: card.categoryId,
+                frontImage: card.frontImage,
+                backImage: card.backImage,
+                interval: card.interval,
+                repetitions: card.repetitions,
+                easeFactor: card.easeFactor,
+                nextReview: card.nextReview
+            };
+
+            if (this.editingCardId) {
+                await apiClient.updateCard(card.id, cardData);
+            } else {
+                await apiClient.createCard(cardData);
+            }
+        } catch (error) {
+            console.error('Failed to save card:', error);
+            throw error;
+        }
+    }
+
+    async saveCategories() {
+        // Categories are saved individually through the API
+    }
+
+    // Fallback method for localStorage
+    loadDataFromLocalStorage() {
         const savedCards = localStorage.getItem('flashcards');
         if (savedCards) {
             this.cards = JSON.parse(savedCards);
@@ -995,18 +1092,10 @@ class SpacedRepetitionApp {
         if (savedCategories) {
             this.categories = JSON.parse(savedCategories);
         } else {
-            // Create default "General" category
             this.categories = [{ id: 'general', name: 'General', color: '#4CAF50' }];
-            this.saveCategories();
         }
-    }
-
-    saveCards() {
-        localStorage.setItem('flashcards', JSON.stringify(this.cards));
-    }
-
-    saveCategories() {
-        localStorage.setItem('categories', JSON.stringify(this.categories));
+        
+        this.initializePinyinSyllables();
     }
 
     // Event Binding
@@ -1144,7 +1233,7 @@ class SpacedRepetitionApp {
         this.editingCardId = null;
     }
 
-    saveCard() {
+    async saveCard() {
         const front = document.getElementById('front-text').value.trim();
         const back = document.getElementById('back-text').value.trim();
 
@@ -1153,46 +1242,72 @@ class SpacedRepetitionApp {
             return;
         }
 
-        if (this.editingCardId) {
-            // Edit existing card
-            const cardIndex = this.cards.findIndex(c => c.id === this.editingCardId);
-            this.cards[cardIndex] = { 
-                ...this.cards[cardIndex], 
-                front, 
-                back,
-                categoryId: document.getElementById('card-category').value || 'general',
-                frontImage: this.tempCardImages.front,
-                backImage: this.tempCardImages.back
-            };
-        } else {
-            // Add new card
-            const now = new Date();
-            now.setSeconds(now.getSeconds() - 1); // Ensure it's immediately available
-            const newCard = {
-                id: Date.now().toString(),
-                front,
-                back,
-                categoryId: document.getElementById('card-category').value || 'general',
-                frontImage: this.tempCardImages.front,
-                backImage: this.tempCardImages.back,
-                interval: 1,
-                repetitions: 0,
-                easeFactor: 2.5,
-                nextReview: now
-            };
-            this.cards.push(newCard);
-        }
+        try {
+            let cardData;
+            
+            if (this.editingCardId) {
+                // Edit existing card
+                const cardIndex = this.cards.findIndex(c => c.id === this.editingCardId);
+                cardData = { 
+                    ...this.cards[cardIndex], 
+                    front, 
+                    back,
+                    categoryId: document.getElementById('card-category').value || 'general',
+                    frontImage: this.tempCardImages.front,
+                    backImage: this.tempCardImages.back
+                };
+                this.cards[cardIndex] = cardData;
+                
+                await apiClient.updateCard(cardData.id, {
+                    front: cardData.front,
+                    back: cardData.back,
+                    categoryId: cardData.categoryId,
+                    frontImage: cardData.frontImage,
+                    backImage: cardData.backImage,
+                    interval: cardData.interval,
+                    repetitions: cardData.repetitions,
+                    easeFactor: cardData.easeFactor,
+                    nextReview: cardData.nextReview
+                });
+            } else {
+                // Add new card
+                const now = new Date();
+                now.setSeconds(now.getSeconds() - 1); // Ensure it's immediately available
+                cardData = {
+                    id: Date.now().toString(),
+                    front,
+                    back,
+                    categoryId: document.getElementById('card-category').value || 'general',
+                    frontImage: this.tempCardImages.front,
+                    backImage: this.tempCardImages.back,
+                    interval: 1,
+                    repetitions: 0,
+                    easeFactor: 2.5,
+                    nextReview: now
+                };
+                this.cards.push(cardData);
+                
+                await apiClient.createCard(cardData);
+            }
 
-        this.saveCards();
-        this.closeCardModal();
-        this.updateUI();
+            this.closeCardModal();
+            this.updateUI();
+        } catch (error) {
+            console.error('Failed to save card:', error);
+            alert('Failed to save card. Please try again.');
+        }
     }
 
-    deleteCard(cardId) {
+    async deleteCard(cardId) {
         if (confirm('Are you sure you want to delete this card?')) {
-            this.cards = this.cards.filter(c => c.id !== cardId);
-            this.saveCards();
-            this.updateUI();
+            try {
+                await apiClient.deleteCard(cardId);
+                this.cards = this.cards.filter(c => c.id !== cardId);
+                this.updateUI();
+            } catch (error) {
+                console.error('Failed to delete card:', error);
+                alert('Failed to delete card. Please try again.');
+            }
         }
     }
 
