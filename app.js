@@ -1406,6 +1406,14 @@ class SpacedRepetitionApp {
                     frontImage: this.tempCardImages.front,
                     backImage: this.tempCardImages.back
                 };
+                console.log('🎯 UI saveCard tempCardImages detailed:', {
+                    frontType: typeof this.tempCardImages.front,
+                    frontIsNull: this.tempCardImages.front === null,
+                    frontValue: this.tempCardImages.front,
+                    backType: typeof this.tempCardImages.back,
+                    backIsNull: this.tempCardImages.back === null,
+                    backLength: this.tempCardImages.back?.length
+                });
                 console.log('🎯 UI saveCard editing card:', {
                     id: cardData.id,
                     hasFrontImage: !!cardData.frontImage,
@@ -1440,6 +1448,14 @@ class SpacedRepetitionApp {
                     easeFactor: 2.5,
                     nextReview: now
                 };
+                console.log('🎯 UI saveCard creating new card - tempCardImages detailed:', {
+                    frontType: typeof this.tempCardImages.front,
+                    frontIsNull: this.tempCardImages.front === null,
+                    frontValue: this.tempCardImages.front,
+                    backType: typeof this.tempCardImages.back,
+                    backIsNull: this.tempCardImages.back === null,
+                    backLength: this.tempCardImages.back?.length
+                });
                 this.cards.push(cardData);
                 
                 await apiClient.createCard({
@@ -1781,11 +1797,16 @@ class SpacedRepetitionApp {
     }
 
     saveGeneratedImage() {
+        console.log('💾 saveGeneratedImage called');
         const img = document.querySelector('#image-preview img');
-        if (!img) return;
+        if (!img) {
+            console.log('💾 saveGeneratedImage: No image found in #image-preview');
+            return;
+        }
 
         const side = document.querySelector('input[name="image-side"]:checked').value;
         const imageUrl = img.src;
+        console.log('💾 saveGeneratedImage:', { side, imageUrlLength: imageUrl?.length, imageUrlPreview: imageUrl?.substring(0, 50) + '...' });
 
         // Check if we're in review mode or card creation mode
         if (this.currentReviewCard) {
