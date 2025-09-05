@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spaced Repetition Flash Cards</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app">
+        <header>
+            <h1>🧠 Flash Cards</h1>
+            <nav>
+                <button id="manage-tab" class="tab-btn active">Manage Cards</button>
+                <button id="review-tab" class="tab-btn">Review</button>
+                <button id="dictionary-tab" class="tab-btn">Dictionary</button>
+            </nav>
+        </header>
+
+        <main>
+            <!-- Card Management Section -->
+            <section id="manage-section" class="section active">
+                <div class="controls">
+                    <div class="controls-left">
+                        <button id="add-card-btn" class="btn primary">+ Add Card</button>
+                        <button id="manage-categories-btn" class="btn secondary">Manage Categories</button>
+                    </div>
+                    <div class="controls-right">
+                        <select id="category-filter" class="category-select">
+                            <option value="all">All Categories</option>
+                        </select>
+                        <span id="card-count">0 cards</span>
+                    </div>
+                </div>
+                <div id="card-list" class="card-list"></div>
+            </section>
+
+            <!-- Review Section -->
+            <section id="review-section" class="section">
+                <div class="review-controls">
+                    <select id="review-category-filter" class="category-select">
+                        <option value="all">Review All Categories</option>
+                    </select>
+                </div>
+                <div id="review-container">
+                    <div id="no-cards-message" class="message">
+                        No cards ready for review. Add some cards first!
+                    </div>
+                    <div id="card-review" class="card-review hidden">
+                        <div class="card-progress">
+                            <span id="progress-text">Card 1 of 5</span>
+                        </div>
+                        <div class="flashcard">
+                            <div id="card-content" class="card-content">
+                                <div id="card-text"></div>
+                                <div id="card-image" class="card-image hidden"></div>
+                            </div>
+                            <button id="flip-btn" class="btn">Show Answer</button>
+                        </div>
+                        <div id="review-actions" class="review-actions hidden">
+                            <button id="hard-btn" class="btn difficulty hard">Hard</button>
+                            <button id="good-btn" class="btn difficulty good">Good</button>
+                            <button id="easy-btn" class="btn difficulty easy">Easy</button>
+                        </div>
+                        <div class="ai-image-controls">
+                            <button id="add-image-btn" class="btn secondary">+ Add AI Image</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Dictionary Section -->
+            <section id="dictionary-section" class="section">
+                <div class="dictionary-header">
+                    <h2>🎯 Pinyin Mnemonic Dictionary</h2>
+                    <p>Create memorable images for each Pinyin syllable to build your phonetic memory system.</p>
+                </div>
+                <div class="dictionary-controls">
+                    <div class="search-controls">
+                        <input type="text" id="syllable-search" placeholder="Search syllables..." class="search-input">
+                        <select id="tone-filter" class="category-select">
+                            <option value="all">All Tones</option>
+                            <option value="1">Tone 1 (ā)</option>
+                            <option value="2">Tone 2 (á)</option>
+                            <option value="3">Tone 3 (ǎ)</option>
+                            <option value="4">Tone 4 (à)</option>
+                            <option value="5">Tone 5 (a)</option>
+                        </select>
+                        <select id="completion-filter" class="category-select">
+                            <option value="all">All Syllables</option>
+                            <option value="complete">With Images</option>
+                            <option value="incomplete">Without Images</option>
+                        </select>
+                    </div>
+                    <div class="stats">
+                        <span id="syllable-stats">0 / 0 syllables complete</span>
+                    </div>
+                </div>
+                <div id="syllable-grid" class="syllable-grid"></div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Add/Edit Card Modal -->
+    <div id="card-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">Add New Card</h2>
+                <button id="close-modal" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="front-text">Front:</label>
+                    <textarea id="front-text" placeholder="Enter the question or prompt"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="back-text">Back:</label>
+                    <textarea id="back-text" placeholder="Enter the answer"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="card-category">Category:</label>
+                    <select id="card-category" class="category-select">
+                        <option value="general">General</option>
+                    </select>
+                </div>
+
+                <!-- AI Image Section -->
+                <div class="card-images-section">
+                    <h3>Card Images</h3>
+                    <div class="card-images-container">
+                        <div class="card-image-side">
+                            <h4>Front Image</h4>
+                            <div id="card-front-image-preview" class="card-image-preview">
+                                <div class="no-image-placeholder">No image</div>
+                            </div>
+                            <div class="image-controls">
+                                <button type="button" id="add-front-image-btn" class="btn secondary small">+ Add AI Image</button>
+                                <button type="button" id="remove-front-image-btn" class="btn secondary small hidden">Remove</button>
+                            </div>
+                        </div>
+                        <div class="card-image-side">
+                            <h4>Back Image</h4>
+                            <div id="card-back-image-preview" class="card-image-preview">
+                                <div class="no-image-placeholder">No image</div>
+                            </div>
+                            <div class="image-controls">
+                                <button type="button" id="add-back-image-btn" class="btn secondary small">+ Add AI Image</button>
+                                <button type="button" id="remove-back-image-btn" class="btn secondary small hidden">Remove</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Image Generation Form (initially hidden) -->
+                <div id="card-image-generation" class="image-generation-section hidden">
+                    <h4 id="generating-for-side">Generating image for: Front</h4>
+                    <div class="form-group">
+                        <label for="card-image-prompt">Image Description:</label>
+                        <textarea id="card-image-prompt" placeholder="Describe the image you want to generate..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="card-gemini-api-key">Google Gemini API Key:</label>
+                        <input type="password" id="card-gemini-api-key" placeholder="Enter your Gemini API key" />
+                    </div>
+                    <div class="image-actions">
+                        <button type="button" id="generate-card-image-btn" class="btn primary">Generate Image</button>
+                        <button type="button" id="save-card-image-btn" class="btn primary hidden">Save Image</button>
+                        <button type="button" id="cancel-card-image-btn" class="btn secondary">Cancel</button>
+                    </div>
+                    <div id="card-image-generation-preview" class="image-preview hidden"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancel-btn" class="btn secondary">Cancel</button>
+                <button id="save-card-btn" class="btn primary">Save Card</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Image Generation Modal -->
+    <div id="image-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Generate AI Image with Gemini</h2>
+                <button id="close-image-modal" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="gemini-api-key">Google Gemini API Key:</label>
+                    <input type="password" id="gemini-api-key" placeholder="Enter your Gemini API key" />
+                    <small>Get your API key from <a href="https://ai.google.dev/" target="_blank">Google AI Studio</a></small>
+                </div>
+                <div class="form-group">
+                    <label for="image-prompt">Describe the image you want:</label>
+                    <textarea id="image-prompt" placeholder="e.g., A detailed illustration of a banana wearing a tiny crown, sitting on a throne made of books, cartoon style"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Add to:</label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="image-side" value="front" checked> Front of card</label>
+                        <label><input type="radio" name="image-side" value="back"> Back of card</label>
+                    </div>
+                </div>
+                <div id="image-preview" class="image-preview hidden"></div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancel-image-btn" class="btn secondary">Cancel</button>
+                <button id="generate-image-btn" class="btn primary">Generate Image</button>
+                <button id="save-image-btn" class="btn primary hidden">Save Image</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Management Modal -->
+    <div id="category-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="category-modal-title">Manage Categories</h2>
+                <button id="close-category-modal" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="category-form">
+                    <div class="form-group">
+                        <label for="category-name">Category Name:</label>
+                        <input type="text" id="category-name" placeholder="Enter category name">
+                    </div>
+                    <div class="form-group">
+                        <label for="category-color">Color:</label>
+                        <input type="color" id="category-color" value="#4CAF50">
+                    </div>
+                    <button id="save-category-btn" class="btn primary">Add Category</button>
+                </div>
+                <div class="category-list">
+                    <h3>Existing Categories</h3>
+                    <div id="existing-categories"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="close-category-modal-btn" class="btn secondary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Syllable Detail Modal -->
+    <div id="syllable-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="syllable-modal-title">Create Mnemonic for: bā</h2>
+                <button id="close-syllable-modal" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="syllable-info">
+                    <div class="syllable-display">
+                        <div class="syllable-text" id="current-syllable">bā</div>
+                        <div class="syllable-tone" id="current-tone">Tone 1</div>
+                    </div>
+                    <div class="syllable-examples" id="syllable-examples">
+                        <h4>Common words using this syllable:</h4>
+                        <div class="example-words"></div>
+                    </div>
+                </div>
+                
+                <div class="mnemonic-section">
+                    <div class="current-image" id="current-syllable-image">
+                        <div class="no-image-placeholder">No mnemonic image yet</div>
+                    </div>
+                    
+                    <div class="mnemonic-form">
+                        <div class="form-group">
+                            <label for="mnemonic-description">Mnemonic Description:</label>
+                            <textarea id="mnemonic-description" placeholder="Describe your mnemonic concept (e.g., 'A BAR of gold' for 'bā')"></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="syllable-image-prompt">Image Prompt:</label>
+                            <textarea id="syllable-image-prompt" placeholder="Describe the image you want to generate for this syllable..."></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="syllable-gemini-api-key">Google Gemini API Key:</label>
+                            <input type="password" id="syllable-gemini-api-key" placeholder="Enter your Gemini API key" />
+                        </div>
+                        
+                        <div class="image-actions">
+                            <button id="generate-syllable-image-btn" class="btn primary">Generate Mnemonic Image</button>
+                            <button id="save-syllable-btn" class="btn primary hidden">Save Mnemonic</button>
+                            <button id="remove-syllable-image-btn" class="btn secondary hidden">Remove Image</button>
+                        </div>
+                        
+                        <div id="syllable-image-preview" class="image-preview hidden"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="close-syllable-modal-btn" class="btn secondary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
