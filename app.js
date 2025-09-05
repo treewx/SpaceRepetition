@@ -1625,18 +1625,27 @@ class SpacedRepetitionApp {
         const side = document.querySelector('input[name="image-side"]:checked').value;
         const imageUrl = img.src;
 
-        if (side === 'front') {
-            this.currentReviewCard.frontImage = imageUrl;
+        // Check if we're in review mode or card creation mode
+        if (this.currentReviewCard) {
+            // Review mode: save to current review card
+            if (side === 'front') {
+                this.currentReviewCard.frontImage = imageUrl;
+            } else {
+                this.currentReviewCard.backImage = imageUrl;
+            }
+
+            // Update main cards array
+            const cardIndex = this.cards.findIndex(c => c.id === this.currentReviewCard.id);
+            this.cards[cardIndex] = this.currentReviewCard;
+
+            this.saveCards();
+            this.displayCardSide(this.isShowingBack ? 'back' : 'front');
         } else {
-            this.currentReviewCard.backImage = imageUrl;
+            // Card creation mode: save to temporary images
+            this.tempCardImages[side] = imageUrl;
+            this.updateCardImagePreviews();
         }
 
-        // Update main cards array
-        const cardIndex = this.cards.findIndex(c => c.id === this.currentReviewCard.id);
-        this.cards[cardIndex] = this.currentReviewCard;
-
-        this.saveCards();
-        this.displayCardSide(this.isShowingBack ? 'back' : 'front');
         this.closeImageModal();
     }
 
