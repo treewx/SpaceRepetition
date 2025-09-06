@@ -1288,16 +1288,16 @@ class SpacedRepetitionApp {
         });
 
         // Dictionary events
-        document.getElementById('syllable-search').addEventListener('input', (e) => this.filterSyllables());
-        document.getElementById('tone-filter').addEventListener('change', (e) => this.filterSyllables());
-        document.getElementById('completion-filter').addEventListener('change', (e) => this.filterSyllables());
-        document.getElementById('close-syllable-modal').addEventListener('click', () => this.closeSyllableModal());
-        document.getElementById('close-syllable-modal-btn').addEventListener('click', () => this.closeSyllableModal());
-        document.getElementById('generate-syllable-image-btn').addEventListener('click', () => this.generateSyllableImage());
-        document.getElementById('save-syllable-btn').addEventListener('click', () => this.saveSyllableMnemonic());
-        document.getElementById('remove-syllable-image-btn').addEventListener('click', () => this.removeSyllableImage());
-        document.getElementById('syllable-modal').addEventListener('click', (e) => {
-            if (e.target.id === 'syllable-modal') this.closeSyllableModal();
+        document.getElementById('character-search').addEventListener('input', (e) => this.filterCharacters());
+        document.getElementById('frequency-filter').addEventListener('change', (e) => this.filterCharacters());
+        document.getElementById('completion-filter').addEventListener('change', (e) => this.filterCharacters());
+        document.getElementById('close-character-modal').addEventListener('click', () => this.closeCharacterModal());
+        document.getElementById('close-character-modal-btn').addEventListener('click', () => this.closeCharacterModal());
+        document.getElementById('generate-character-image-btn').addEventListener('click', () => this.generateCharacterImage());
+        document.getElementById('save-character-btn').addEventListener('click', () => this.saveCharacterMnemonic());
+        document.getElementById('remove-character-image-btn').addEventListener('click', () => this.removeCharacterImage());
+        document.getElementById('character-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'character-modal') this.closeCharacterModal();
         });
 
         // Card image generation events
@@ -1982,70 +1982,85 @@ class SpacedRepetitionApp {
     }
 
     // Dictionary System
-    renderDictionary() {
-        this.filterSyllables();
-        this.updateSyllableStats();
+    async renderDictionary() {
+        await this.loadCharacters();
+        this.filterCharacters();
+        this.updateCharacterStats();
     }
 
-    filterSyllables() {
-        const searchTerm = document.getElementById('syllable-search').value.toLowerCase();
-        const toneFilter = document.getElementById('tone-filter').value;
+    async loadCharacters() {
+        try {
+            this.characters = await this.apiClient.getCharacters();
+            console.log('✅ Loaded characters for dictionary:', this.characters);
+        } catch (error) {
+            console.error('❌ Failed to load characters from API:', error);
+            this.characters = [];
+        }
+    }
+
+    filterCharacters() {
+        const searchTerm = document.getElementById('character-search').value.toLowerCase();
+        const frequencyFilter = document.getElementById('frequency-filter').value;
         const completionFilter = document.getElementById('completion-filter').value;
 
-        this.filteredSyllables = Object.keys(this.syllables).filter(key => {
-            const syllable = this.syllables[key];
-            
+        this.filteredCharacters = this.characters.filter(character => {
             // Search filter
-            if (searchTerm && !syllable.syllable.toLowerCase().includes(searchTerm) && 
-                !syllable.base.toLowerCase().includes(searchTerm)) {
+            if (searchTerm && 
+                !character.character.includes(searchTerm) && 
+                !character.pinyin.toLowerCase().includes(searchTerm) &&
+                !character.meaning.toLowerCase().includes(searchTerm)) {
                 return false;
             }
             
-            // Tone filter
-            if (toneFilter !== 'all' && syllable.tone.toString() !== toneFilter) {
-                return false;
+            // Frequency filter
+            if (frequencyFilter !== 'all' && character.frequency_rank) {
+                const rank = character.frequency_rank;
+                if (frequencyFilter === 'top100' && rank > 100) return false;
+                if (frequencyFilter === 'top500' && rank > 500) return false;
+                if (frequencyFilter === 'top1000' && rank > 1000) return false;
             }
             
             // Completion filter
-            if (completionFilter === 'complete' && !syllable.imageUrl) {
+            if (completionFilter === 'complete' && !character.image_url) {
                 return false;
             }
-            if (completionFilter === 'incomplete' && syllable.imageUrl) {
+            if (completionFilter === 'incomplete' && character.image_url) {
                 return false;
             }
             
             return true;
         });
 
-        this.renderSyllableGrid();
-        this.updateSyllableStats();
+        this.renderCharacterGrid();
+        this.updateCharacterStats();
     }
 
-    renderSyllableGrid() {
-        const grid = document.getElementById('syllable-grid');
+    renderCharacterGrid() {
+        const grid = document.getElementById('character-grid');
         
-        if (this.filteredSyllables.length === 0) {
-            grid.innerHTML = '<div class="message">No syllables match your filters.</div>';
+        if (this.filteredCharacters.length === 0) {
+            grid.innerHTML = '<div class="message">No characters match your filters.</div>';
             return;
         }
 
-        grid.innerHTML = this.filteredSyllables.map(key => {
-            const syllable = this.syllables[key];
-            const hasImage = syllable.imageUrl ? 'has-image' : 'no-image';
-            const toneClass = `tone-${syllable.tone}`;
+        grid.innerHTML = this.filteredCharacters.map(character => {
+            const hasImage = character.image_url ? 'has-image' : 'no-image';
+            const frequencyClass = character.frequency_rank ? `freq-${Math.floor(character.frequency_rank / 100)}` : 'no-freq';
             
             return `
-                <div class="syllable-card ${hasImage} ${toneClass}" onclick="app.openSyllableModal('${key}')">
-                    <div class="syllable-display">
-                        <div class="syllable-text">${syllable.syllable}</div>
-                        <div class="syllable-tone">Tone ${syllable.tone}</div>
+                <div class="character-card ${hasImage} ${frequencyClass}" onclick="app.openCharacterModal('${character.character}')">
+                    <div class="character-display">
+                        <div class="character-text">${character.character}</div>
+                        <div class="character-pinyin">${character.pinyin}</div>
+                        <div class="character-meaning">${character.meaning}</div>
+                        ${character.frequency_rank ? `<div class="character-rank">#${character.frequency_rank}</div>` : ''}
                     </div>
-                    ${syllable.imageUrl ? 
-                        `<div class="syllable-image"><img src="${syllable.imageUrl}" alt="${syllable.syllable}"></div>` :
-                        '<div class="syllable-placeholder">No image</div>'
+                    ${character.image_url ? 
+                        `<div class="character-image"><img src="${character.image_url}" alt="${character.character}"></div>` :
+                        '<div class="character-placeholder">No mnemonic</div>'
                     }
-                    ${syllable.description ? 
-                        `<div class="syllable-description">${this.escapeHtml(syllable.description)}</div>` :
+                    ${character.mnemonic_story ? 
+                        `<div class="character-description">${this.escapeHtml(character.mnemonic_story.substring(0, 100))}${character.mnemonic_story.length > 100 ? '...' : ''}</div>` :
                         ''
                     }
                 </div>
@@ -2053,52 +2068,88 @@ class SpacedRepetitionApp {
         }).join('');
     }
 
-    updateSyllableStats() {
-        const total = Object.keys(this.syllables).length;
-        const completed = Object.values(this.syllables).filter(s => s.imageUrl).length;
-        document.getElementById('syllable-stats').textContent = `${completed} / ${total} syllables complete`;
+    updateCharacterStats() {
+        const total = this.characters.length;
+        const completed = this.characters.filter(c => c.image_url).length;
+        document.getElementById('character-stats').textContent = `${completed} / ${total} characters complete`;
     }
 
-    openSyllableModal(syllableKey) {
-        this.currentSyllable = syllableKey;
-        const syllable = this.syllables[syllableKey];
+    async openCharacterModal(characterText) {
+        this.currentCharacter = characterText;
         
-        document.getElementById('syllable-modal-title').textContent = `Create Mnemonic for: ${syllable.syllable}`;
-        document.getElementById('current-syllable').textContent = syllable.syllable;
-        document.getElementById('current-tone').textContent = `Tone ${syllable.tone}`;
+        try {
+            const character = await this.apiClient.getCharacter(characterText);
+            this.currentCharacterData = character;
+        } catch (error) {
+            // Character not found in database, create empty data structure
+            this.currentCharacterData = {
+                character: characterText,
+                pinyin: '',
+                meaning: '',
+                image_url: null,
+                image_prompt: '',
+                mnemonic_story: '',
+                examples: []
+            };
+        }
+        
+        document.getElementById('character-modal-title').textContent = `Create Mnemonic for: ${characterText}`;
+        document.getElementById('current-character').textContent = characterText;
+        document.getElementById('current-pinyin').textContent = this.currentCharacterData.pinyin;
+        document.getElementById('current-meaning').textContent = this.currentCharacterData.meaning;
         
         // Show examples
-        const exampleWords = document.querySelector('#syllable-examples .example-words');
-        exampleWords.innerHTML = syllable.examples.map(example => 
-            `<div class="example-word">${example}</div>`
-        ).join('');
+        const exampleWords = document.querySelector('#character-examples .example-words');
+        if (this.currentCharacterData.examples && this.currentCharacterData.examples.length > 0) {
+            exampleWords.innerHTML = this.currentCharacterData.examples.map(example => 
+                `<div class="example-word">${example}</div>`
+            ).join('');
+        } else {
+            exampleWords.innerHTML = '<div class="no-examples">No examples available</div>';
+        }
         
         // Populate form
-        document.getElementById('mnemonic-description').value = syllable.description || '';
-        document.getElementById('syllable-image-prompt').value = syllable.imagePrompt || '';
-        document.getElementById('syllable-gemini-api-key').value = this.geminiApiKey;
+        document.getElementById('character-mnemonic-story').value = this.currentCharacterData.mnemonic_story || '';
+        document.getElementById('character-image-prompt').value = this.currentCharacterData.image_prompt || '';
+        document.getElementById('character-gemini-api-key').value = this.geminiApiKey;
         
         // Show current image or placeholder
-        const currentImage = document.getElementById('current-syllable-image');
-        if (syllable.imageUrl) {
-            currentImage.innerHTML = `<img src="${syllable.imageUrl}" alt="${syllable.syllable}">`;
-            document.getElementById('remove-syllable-image-btn').classList.remove('hidden');
+        const currentImage = document.getElementById('current-character-image');
+        if (this.currentCharacterData.image_url) {
+            currentImage.innerHTML = `<img src="${this.currentCharacterData.image_url}" alt="${characterText}">`;
+            document.getElementById('remove-character-image-btn').classList.remove('hidden');
         } else {
             currentImage.innerHTML = '<div class="no-image-placeholder">No mnemonic image yet</div>';
-            document.getElementById('remove-syllable-image-btn').classList.add('hidden');
+            document.getElementById('remove-character-image-btn').classList.add('hidden');
         }
         
         // Reset modal state
-        document.getElementById('generate-syllable-image-btn').classList.remove('hidden');
-        document.getElementById('save-syllable-btn').classList.add('hidden');
-        document.getElementById('syllable-image-preview').classList.add('hidden');
+        document.getElementById('generate-character-image-btn').classList.remove('hidden');
+        document.getElementById('save-character-btn').classList.add('hidden');
+        document.getElementById('character-image-preview').classList.add('hidden');
         
-        document.getElementById('syllable-modal').classList.add('active');
+        document.getElementById('character-modal').classList.add('active');
     }
 
-    closeSyllableModal() {
-        document.getElementById('syllable-modal').classList.remove('active');
-        this.currentSyllable = null;
+    closeCharacterModal() {
+        document.getElementById('character-modal').classList.remove('active');
+        this.currentCharacter = null;
+        this.currentCharacterData = null;
+    }
+
+    async generateCharacterImage() {
+        // TODO: Implement character image generation
+        alert('Character image generation coming soon!');
+    }
+
+    async saveCharacterMnemonic() {
+        // TODO: Implement character mnemonic saving
+        alert('Character mnemonic saving coming soon!');
+    }
+
+    async removeCharacterImage() {
+        // TODO: Implement character image removal
+        alert('Character image removal coming soon!');
     }
 
     async generateSyllableImage() {
@@ -2385,15 +2436,15 @@ class SpacedRepetitionApp {
             // Convert Chinese to pinyin
             const pinyin = await this.convertToPinyin(translation.chinese);
             
-            // Extract syllables and find images
-            const syllableData = this.extractSyllables(pinyin);
+            // Extract characters and find mnemonics
+            const characterData = await this.extractCharacters(translation.chinese, pinyin);
             
             // Display results
             this.displayTranslationResults({
                 english: englishPhrase,
                 chinese: translation.chinese,
                 pinyin: pinyin,
-                syllables: syllableData
+                characters: characterData
             });
 
         } catch (error) {
@@ -2481,27 +2532,55 @@ class SpacedRepetitionApp {
         return convertedChars.join(' ');
     }
 
-    extractSyllables(pinyinText) {
-        const syllables = pinyinText.split(' ').filter(s => s.trim());
-        return syllables.map(syllable => {
-            // Skip bracketed characters (unmapped Chinese characters)
-            if (syllable.startsWith('[') && syllable.endsWith(']')) {
-                return {
-                    original: syllable,
-                    normalized: null,
-                    imageData: null,
-                    isUnmapped: true
-                };
-            }
+    async extractCharacters(chineseText, pinyinText) {
+        console.log('🔍 Extracting characters from:', { chineseText, pinyinText });
+        
+        // Split Chinese text into individual characters
+        const characters = [...chineseText].filter(char => char.trim() && char !== ' ');
+        const pinyinSyllables = pinyinText.split(' ').filter(s => s.trim());
+        
+        console.log('🔍 Character breakdown:', { characters, pinyinSyllables });
+        
+        const characterData = [];
+        
+        for (let i = 0; i < characters.length; i++) {
+            const character = characters[i];
+            const pinyin = pinyinSyllables[i] || '';
             
-            const cleanSyllable = this.normalizePinyin(syllable);
-            return {
-                original: syllable,
-                normalized: cleanSyllable,
-                imageData: this.findSyllableImage(cleanSyllable),
-                isUnmapped: false
-            };
-        });
+            console.log(`🔍 Processing character ${i + 1}:`, { character, pinyin });
+            
+            try {
+                // Try to fetch character data from API
+                const existing = await this.apiClient.getCharacter(character);
+                console.log(`✅ Found existing character data for ${character}:`, existing);
+                
+                characterData.push({
+                    character,
+                    pinyin,
+                    meaning: existing.meaning,
+                    imageUrl: existing.image_url,
+                    mnemonicStory: existing.mnemonic_story,
+                    examples: existing.examples,
+                    hasData: true
+                });
+            } catch (error) {
+                console.log(`❌ No character data found for ${character}, will need mnemonic`);
+                
+                // Character not found in database, mark for potential mnemonic generation
+                characterData.push({
+                    character,
+                    pinyin,
+                    meaning: null,
+                    imageUrl: null,
+                    mnemonicStory: null,
+                    examples: null,
+                    hasData: false
+                });
+            }
+        }
+        
+        console.log('🔍 Final character data:', characterData);
+        return characterData;
     }
 
     normalizePinyin(syllable) {
@@ -2555,48 +2634,55 @@ class SpacedRepetitionApp {
         document.getElementById('chinese-text').textContent = results.chinese;
         document.getElementById('pinyin-text').textContent = results.pinyin;
         
-        // Display syllable images
+        // Display character images
         const imagesGrid = document.getElementById('syllable-images-grid');
         imagesGrid.innerHTML = '';
         
-        results.syllables.forEach(syllableData => {
-            const syllableCard = document.createElement('div');
-            syllableCard.className = 'syllable-card';
+        results.characters.forEach(characterData => {
+            const characterCard = document.createElement('div');
+            characterCard.className = 'syllable-card';
             
-            // Handle unmapped characters (Chinese characters in brackets)
-            if (syllableData.isUnmapped) {
-                syllableCard.innerHTML = `
-                    <div class="syllable-placeholder">
-                        <div class="no-image">❓</div>
+            // Handle characters with mnemonic data
+            if (characterData.hasData && characterData.imageUrl) {
+                characterCard.innerHTML = `
+                    <div class="syllable-image">
+                        <img src="${characterData.imageUrl}" alt="Mnemonic for ${characterData.character}">
                     </div>
                     <div class="syllable-info">
-                        <div class="syllable-text">${syllableData.original}</div>
-                        <div class="syllable-description">Character needs pinyin mapping</div>
+                        <div class="syllable-text">${characterData.character}</div>
+                        <div class="syllable-pinyin">${characterData.pinyin}</div>
+                        <div class="syllable-description">${characterData.meaning || ''}</div>
+                        ${characterData.mnemonicStory ? `<div class="mnemonic-story">${characterData.mnemonicStory}</div>` : ''}
                     </div>
                 `;
-            } else if (syllableData.imageData) {
-                syllableCard.innerHTML = `
-                    <div class="syllable-image">
-                        <img src="${syllableData.imageData.url}" alt="Mnemonic for ${syllableData.original}">
+            } else if (characterData.hasData) {
+                // Has data but no image
+                characterCard.innerHTML = `
+                    <div class="syllable-placeholder">
+                        <div class="no-image">💭</div>
                     </div>
                     <div class="syllable-info">
-                        <div class="syllable-text">${syllableData.original}</div>
-                        <div class="syllable-description">${syllableData.imageData.description || ''}</div>
+                        <div class="syllable-text">${characterData.character}</div>
+                        <div class="syllable-pinyin">${characterData.pinyin}</div>
+                        <div class="syllable-description">${characterData.meaning || ''}</div>
+                        ${characterData.mnemonicStory ? `<div class="mnemonic-story">${characterData.mnemonicStory}</div>` : ''}
                     </div>
                 `;
             } else {
-                syllableCard.innerHTML = `
+                // No character data - needs mnemonic generation
+                characterCard.innerHTML = `
                     <div class="syllable-placeholder">
                         <div class="no-image">📝</div>
                     </div>
                     <div class="syllable-info">
-                        <div class="syllable-text">${syllableData.original}</div>
-                        <div class="syllable-description">No mnemonic image</div>
+                        <div class="syllable-text">${characterData.character}</div>
+                        <div class="syllable-pinyin">${characterData.pinyin}</div>
+                        <div class="syllable-description">Character mnemonic needed</div>
                     </div>
                 `;
             }
             
-            imagesGrid.appendChild(syllableCard);
+            imagesGrid.appendChild(characterCard);
         });
         
         // Show results

@@ -63,6 +63,22 @@ async function initDatabase() {
             );
         `);
 
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS character_mnemonics (
+                id VARCHAR(255) PRIMARY KEY,
+                character VARCHAR(10) NOT NULL UNIQUE,
+                pinyin VARCHAR(20) NOT NULL,
+                meaning VARCHAR(100) NOT NULL,
+                image_url TEXT,
+                image_prompt TEXT,
+                mnemonic_story TEXT,
+                examples TEXT[],
+                frequency_rank INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
         // Insert default General category if it doesn't exist
         await pool.query(`
             INSERT INTO categories (id, name, color) 
@@ -242,6 +258,51 @@ app.post('/api/syllables', async (req, res) => {
     } catch (error) {
         console.error('Error saving syllable:', error);
         res.status(500).json({ error: 'Failed to save syllable' });
+    }
+});
+
+// Character Mnemonics
+app.get('/api/characters', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM character_mnemonics ORDER BY frequency_rank ASC NULLS LAST, character');
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Error fetching characters:', error);
+        res.status(500).json({ error: 'Failed to fetch characters' });
+    }
+});
+
+app.post('/api/characters', async (req, res) => {
+    try {
+        const { id, character, pinyin, meaning, imageUrl, imagePrompt, mnemonicStory, examples, frequencyRank } = req.body;
+        
+        const result = await pool.query(`
+            INSERT INTO character_mnemonics (id, character, pinyin, meaning, image_url, image_prompt, mnemonic_story, examples, frequency_rank)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            ON CONFLICT (character) DO UPDATE SET
+                pinyin = $3, meaning = $4, image_url = $5, image_prompt = $6, 
+                mnemonic_story = $7, examples = $8, frequency_rank = $9, updated_at = CURRENT_TIMESTAMP
+            RETURNING *
+        `, [id, character, pinyin, meaning, imageUrl, imagePrompt, mnemonicStory, examples, frequencyRank]);
+        
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.error('Error saving character:', error);
+        res.status(500).json({ error: 'Failed to save character' });
+    }
+});
+
+app.get('/api/characters/:character', async (req, res) => {
+    try {
+        const { character } = req.params;
+        const result = await pool.query('SELECT * FROM character_mnemonics WHERE character = $1', [character]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Character not found' });
+        }
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.error('Error fetching character:', error);
+        res.status(500).json({ error: 'Failed to fetch character' });
     }
 });
 

@@ -86,6 +86,22 @@ class APIClient {
             body: JSON.stringify(syllable),
         });
     }
+
+    // Character Mnemonics API
+    async getCharacters() {
+        return this.request('/api/characters');
+    }
+
+    async getCharacter(character) {
+        return this.request(`/api/characters/${encodeURIComponent(character)}`);
+    }
+
+    async saveCharacter(characterData) {
+        return this.request('/api/characters', {
+            method: 'POST',
+            body: JSON.stringify(characterData),
+        });
+    }
 }
 
 // Create global API client instance

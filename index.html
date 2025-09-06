@@ -73,31 +73,29 @@
             <!-- Dictionary Section -->
             <section id="dictionary-section" class="section">
                 <div class="dictionary-header">
-                    <h2>🎯 Pinyin Mnemonic Dictionary</h2>
-                    <p>Create memorable images for each Pinyin syllable to build your phonetic memory system.</p>
+                    <h2>🎯 Character Mnemonic Dictionary</h2>
+                    <p>Create memorable images and stories for each Chinese character to build your character memory system.</p>
                 </div>
                 <div class="dictionary-controls">
                     <div class="search-controls">
-                        <input type="text" id="syllable-search" placeholder="Search syllables..." class="search-input">
-                        <select id="tone-filter" class="category-select">
-                            <option value="all">All Tones</option>
-                            <option value="1">Tone 1 (ā)</option>
-                            <option value="2">Tone 2 (á)</option>
-                            <option value="3">Tone 3 (ǎ)</option>
-                            <option value="4">Tone 4 (à)</option>
-                            <option value="5">Tone 5 (a)</option>
+                        <input type="text" id="character-search" placeholder="Search characters..." class="search-input">
+                        <select id="frequency-filter" class="category-select">
+                            <option value="all">All Characters</option>
+                            <option value="top100">Top 100 Most Frequent</option>
+                            <option value="top500">Top 500 Most Frequent</option>
+                            <option value="top1000">Top 1000 Most Frequent</option>
                         </select>
                         <select id="completion-filter" class="category-select">
-                            <option value="all">All Syllables</option>
-                            <option value="complete">With Images</option>
-                            <option value="incomplete">Without Images</option>
+                            <option value="all">All Characters</option>
+                            <option value="complete">With Mnemonics</option>
+                            <option value="incomplete">Without Mnemonics</option>
                         </select>
                     </div>
                     <div class="stats">
-                        <span id="syllable-stats">0 / 0 syllables complete</span>
+                        <span id="character-stats">0 / 0 characters complete</span>
                     </div>
                 </div>
-                <div id="syllable-grid" class="syllable-grid"></div>
+                <div id="character-grid" class="character-grid"></div>
             </section>
 
             <!-- Auto Generate Section -->
@@ -286,57 +284,58 @@
     </div>
 
     <!-- Syllable Detail Modal -->
-    <div id="syllable-modal" class="modal">
+    <div id="character-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 id="syllable-modal-title">Create Mnemonic for: bā</h2>
-                <button id="close-syllable-modal" class="close-btn">&times;</button>
+                <h2 id="character-modal-title">Create Mnemonic for: 我</h2>
+                <button id="close-character-modal" class="close-btn">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="syllable-info">
-                    <div class="syllable-display">
-                        <div class="syllable-text" id="current-syllable">bā</div>
-                        <div class="syllable-tone" id="current-tone">Tone 1</div>
+                <div class="character-info">
+                    <div class="character-display">
+                        <div class="character-text" id="current-character">我</div>
+                        <div class="character-pinyin" id="current-pinyin">wǒ</div>
+                        <div class="character-meaning" id="current-meaning">I, me</div>
                     </div>
-                    <div class="syllable-examples" id="syllable-examples">
-                        <h4>Common words using this syllable:</h4>
+                    <div class="character-examples" id="character-examples">
+                        <h4>Example sentences using this character:</h4>
                         <div class="example-words"></div>
                     </div>
                 </div>
                 
                 <div class="mnemonic-section">
-                    <div class="current-image" id="current-syllable-image">
+                    <div class="current-image" id="current-character-image">
                         <div class="no-image-placeholder">No mnemonic image yet</div>
                     </div>
                     
                     <div class="mnemonic-form">
                         <div class="form-group">
-                            <label for="mnemonic-description">Mnemonic Description:</label>
-                            <textarea id="mnemonic-description" placeholder="Describe your mnemonic concept (e.g., 'A BAR of gold' for 'bā')"></textarea>
+                            <label for="character-mnemonic-story">Mnemonic Story:</label>
+                            <textarea id="character-mnemonic-story" placeholder="Create a memorable story for this character (e.g., 'The character 我 looks like a person with a weapon defending themselves')"></textarea>
                         </div>
                         
                         <div class="form-group">
-                            <label for="syllable-image-prompt">Image Prompt:</label>
-                            <textarea id="syllable-image-prompt" placeholder="Describe the image you want to generate for this syllable..."></textarea>
+                            <label for="character-image-prompt">Image Prompt:</label>
+                            <textarea id="character-image-prompt" placeholder="Describe the image you want to generate for this character..."></textarea>
                         </div>
                         
                         <div class="form-group">
-                            <label for="syllable-gemini-api-key">Google Gemini API Key:</label>
-                            <input type="password" id="syllable-gemini-api-key" placeholder="Enter your Gemini API key" />
+                            <label for="character-gemini-api-key">Google Gemini API Key:</label>
+                            <input type="password" id="character-gemini-api-key" placeholder="Enter your Gemini API key" />
                         </div>
                         
                         <div class="image-actions">
-                            <button id="generate-syllable-image-btn" class="btn primary">Generate Mnemonic Image</button>
-                            <button id="save-syllable-btn" class="btn primary hidden">Save Mnemonic</button>
-                            <button id="remove-syllable-image-btn" class="btn secondary hidden">Remove Image</button>
+                            <button id="generate-character-image-btn" class="btn primary">Generate Mnemonic Image</button>
+                            <button id="save-character-btn" class="btn primary hidden">Save Mnemonic</button>
+                            <button id="remove-character-image-btn" class="btn secondary hidden">Remove Image</button>
                         </div>
                         
-                        <div id="syllable-image-preview" class="image-preview hidden"></div>
+                        <div id="character-image-preview" class="image-preview hidden"></div>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button id="close-syllable-modal-btn" class="btn secondary">Close</button>
+                <button id="close-character-modal-btn" class="btn secondary">Close</button>
             </div>
         </div>
     </div>
