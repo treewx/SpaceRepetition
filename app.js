@@ -2096,6 +2096,17 @@ class SpacedRepetitionApp {
             };
         }
         
+        // Check if we have saved data in separate character storage
+        const characterStorage = JSON.parse(localStorage.getItem('characterStorage') || '{}');
+        if (characterStorage[characterText]) {
+            // Merge saved data with current data, preferring saved data
+            this.currentCharacterData = {
+                ...this.currentCharacterData,
+                ...characterStorage[characterText]
+            };
+            console.log('Loaded character data from character storage:', this.currentCharacterData);
+        }
+        
         document.getElementById('character-modal-title').textContent = `Create Mnemonic for: ${characterText}`;
         document.getElementById('current-character').textContent = characterText;
         document.getElementById('current-pinyin').textContent = this.currentCharacterData.pinyin;
@@ -2192,35 +2203,59 @@ class SpacedRepetitionApp {
             return;
         }
 
+        console.log('Saving character mnemonic...');
+        console.log('Current character data:', this.currentCharacterData);
+        console.log('Current syllable:', this.currentSyllable);
+        console.log('Temp image URL:', this.tempCharacterImageUrl);
+
         try {
             // Save the image URL to the character data
             this.currentCharacterData.image_url = this.tempCharacterImageUrl;
+            
+            let saved = false;
             
             // Update the character in the syllables data structure
             if (this.currentSyllable && this.syllables[this.currentSyllable]) {
                 const characters = this.syllables[this.currentSyllable].characters;
                 const charIndex = characters.findIndex(char => char.character === this.currentCharacterData.character);
+                console.log('Found character at index:', charIndex);
                 if (charIndex !== -1) {
                     characters[charIndex] = this.currentCharacterData;
                     
                     // Save to localStorage
                     localStorage.setItem('syllables', JSON.stringify(this.syllables));
+                    saved = true;
+                    console.log('Saved to syllables structure');
                 }
             }
             
-            // Update the UI to show the saved image
-            const currentImage = document.getElementById('current-character-image');
-            currentImage.innerHTML = `<img src="${this.tempCharacterImageUrl}" alt="${this.currentCharacterData.character}">`;
-            document.getElementById('remove-character-image-btn').classList.remove('hidden');
+            // If not saved in syllables, try to save in a separate character storage
+            if (!saved) {
+                console.log('Character not found in syllables, saving separately');
+                let characterStorage = JSON.parse(localStorage.getItem('characterStorage') || '{}');
+                characterStorage[this.currentCharacterData.character] = this.currentCharacterData;
+                localStorage.setItem('characterStorage', JSON.stringify(characterStorage));
+                saved = true;
+                console.log('Saved to character storage');
+            }
             
-            // Hide the generation section and show success message
-            document.getElementById('character-image-preview').classList.add('hidden');
-            document.getElementById('save-character-btn').classList.add('hidden');
-            
-            // Clear temporary storage
-            this.tempCharacterImageUrl = null;
-            
-            alert('Mnemonic image saved successfully!');
+            if (saved) {
+                // Update the UI to show the saved image
+                const currentImage = document.getElementById('current-character-image');
+                currentImage.innerHTML = `<img src="${this.tempCharacterImageUrl}" alt="${this.currentCharacterData.character}">`;
+                document.getElementById('remove-character-image-btn').classList.remove('hidden');
+                
+                // Hide the generation section and show success message
+                document.getElementById('character-image-preview').classList.add('hidden');
+                document.getElementById('save-character-btn').classList.add('hidden');
+                
+                // Clear temporary storage
+                this.tempCharacterImageUrl = null;
+                
+                alert('Mnemonic image saved successfully!');
+            } else {
+                throw new Error('Failed to find appropriate storage location for character');
+            }
             
         } catch (error) {
             console.error('Error saving character mnemonic:', error);
@@ -2242,6 +2277,8 @@ class SpacedRepetitionApp {
             // Remove the image URL from character data
             this.currentCharacterData.image_url = null;
             
+            let removed = false;
+            
             // Update the character in the syllables data structure
             if (this.currentSyllable && this.syllables[this.currentSyllable]) {
                 const characters = this.syllables[this.currentSyllable].characters;
@@ -2251,7 +2288,16 @@ class SpacedRepetitionApp {
                     
                     // Save to localStorage
                     localStorage.setItem('syllables', JSON.stringify(this.syllables));
+                    removed = true;
                 }
+            }
+            
+            // Also remove from separate character storage
+            let characterStorage = JSON.parse(localStorage.getItem('characterStorage') || '{}');
+            if (characterStorage[this.currentCharacterData.character]) {
+                characterStorage[this.currentCharacterData.character] = this.currentCharacterData;
+                localStorage.setItem('characterStorage', JSON.stringify(characterStorage));
+                removed = true;
             }
             
             // Update the UI to show no image
