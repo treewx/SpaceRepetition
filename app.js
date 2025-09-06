@@ -2432,7 +2432,11 @@ class SpacedRepetitionApp {
                 'i love you': '我爱你',
                 'cat': '猫',
                 'dog': '狗',
-                'water': '水'
+                'water': '水',
+                'i am eating': '我正在吃东西',
+                'eating': '吃东西',
+                'food': '食物',
+                'drink': '喝水'
             };
             
             const lowerText = englishText.toLowerCase();
@@ -2445,25 +2449,57 @@ class SpacedRepetitionApp {
     }
 
     async convertToPinyin(chineseText) {
-        // Simple pinyin mapping for demo - in production use a proper library
+        // Expanded pinyin mapping - in production use a proper library
         const pinyinMap = {
             '你': 'nǐ', '好': 'hǎo', '谢': 'xiè', '早': 'zǎo', '上': 'shàng',
             '吗': 'ma', '再': 'zài', '见': 'jiàn', '请': 'qǐng', 
             '不': 'bù', '意': 'yì', '思': 'si', '我': 'wǒ', '爱': 'ài',
-            '猫': 'māo', '狗': 'gǒu', '水': 'shuǐ'
+            '猫': 'māo', '狗': 'gǒu', '水': 'shuǐ',
+            // Additional characters for common phrases
+            '正': 'zhèng', '在': 'zài', '吃': 'chī', '东': 'dōng', '西': 'xī',
+            '是': 'shì', '的': 'de', '一': 'yī', '了': 'le', '人': 'rén',
+            '有': 'yǒu', '他': 'tā', '这': 'zhè', '个': 'gè', '们': 'men',
+            '来': 'lái', '到': 'dào', '时': 'shí', '大': 'dà', '地': 'dì',
+            '为': 'wèi', '子': 'zi', '中': 'zhōng', '国': 'guó', '年': 'nián',
+            '着': 'zhe', '就': 'jiù', '那': 'nà', '和': 'hé', '要': 'yào',
+            '她': 'tā', '出': 'chū', '也': 'yě', '得': 'de', '里': 'lǐ',
+            '后': 'hòu', '自': 'zì', '以': 'yǐ', '会': 'huì', '家': 'jiā',
+            '可': 'kě', '下': 'xià', '而': 'ér', '过': 'guò', '天': 'tiān',
+            '去': 'qù', '能': 'néng', '对': 'duì', '小': 'xiǎo', '多': 'duō',
+            '食': 'shí', '物': 'wù', '喝': 'hē'
         };
         
-        return chineseText.split('').map(char => pinyinMap[char] || char).join(' ');
+        const convertedChars = chineseText.split('').map(char => {
+            if (pinyinMap[char]) {
+                return pinyinMap[char];
+            }
+            // If character not found, try to indicate it's missing
+            console.warn(`Pinyin mapping missing for character: ${char}`);
+            return `[${char}]`; // Wrap unmapped characters in brackets
+        });
+        
+        return convertedChars.join(' ');
     }
 
     extractSyllables(pinyinText) {
         const syllables = pinyinText.split(' ').filter(s => s.trim());
         return syllables.map(syllable => {
+            // Skip bracketed characters (unmapped Chinese characters)
+            if (syllable.startsWith('[') && syllable.endsWith(']')) {
+                return {
+                    original: syllable,
+                    normalized: null,
+                    imageData: null,
+                    isUnmapped: true
+                };
+            }
+            
             const cleanSyllable = this.normalizePinyin(syllable);
             return {
                 original: syllable,
                 normalized: cleanSyllable,
-                imageData: this.findSyllableImage(cleanSyllable)
+                imageData: this.findSyllableImage(cleanSyllable),
+                isUnmapped: false
             };
         });
     }
@@ -2527,7 +2563,18 @@ class SpacedRepetitionApp {
             const syllableCard = document.createElement('div');
             syllableCard.className = 'syllable-card';
             
-            if (syllableData.imageData) {
+            // Handle unmapped characters (Chinese characters in brackets)
+            if (syllableData.isUnmapped) {
+                syllableCard.innerHTML = `
+                    <div class="syllable-placeholder">
+                        <div class="no-image">❓</div>
+                    </div>
+                    <div class="syllable-info">
+                        <div class="syllable-text">${syllableData.original}</div>
+                        <div class="syllable-description">Character needs pinyin mapping</div>
+                    </div>
+                `;
+            } else if (syllableData.imageData) {
                 syllableCard.innerHTML = `
                     <div class="syllable-image">
                         <img src="${syllableData.imageData.url}" alt="Mnemonic for ${syllableData.original}">
