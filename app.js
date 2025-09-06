@@ -11,6 +11,9 @@ class SpacedRepetitionApp {
         this.currentReviewCard = null;
         this.geminiApiKey = localStorage.getItem('geminiApiKey') || '';
         
+        // API client initialization
+        this.apiClient = window.apiClient;
+        
         // Dictionary system
         this.syllables = {};
         this.currentSyllable = null;
