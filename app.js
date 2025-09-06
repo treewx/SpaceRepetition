@@ -2141,18 +2141,130 @@ class SpacedRepetitionApp {
     }
 
     async generateCharacterImage() {
-        // TODO: Implement character image generation
-        alert('Character image generation coming soon!');
+        const prompt = document.getElementById('character-image-prompt').value.trim();
+        const apiKey = document.getElementById('character-gemini-api-key').value.trim();
+        
+        if (!prompt) {
+            alert('Please enter a description for the mnemonic image.');
+            return;
+        }
+        
+        if (!apiKey) {
+            alert('Please enter your Google Gemini API key.');
+            return;
+        }
+
+        // Store API key
+        this.geminiApiKey = apiKey;
+        localStorage.setItem('geminiApiKey', apiKey);
+
+        const generateBtn = document.getElementById('generate-character-image-btn');
+        const preview = document.getElementById('character-image-preview');
+        
+        generateBtn.textContent = 'Generating mnemonic image...';
+        generateBtn.disabled = true;
+
+        try {
+            const characterText = this.currentCharacterData.character;
+            const enhancedPrompt = `Create a memorable mnemonic image for the Chinese character "${characterText}" (meaning: ${this.currentCharacterData.meaning}). ${prompt}. Make it vivid, clear, and easy to remember for language learning.`;
+            const imageUrl = await this.generateImageWithGemini(enhancedPrompt, apiKey);
+            
+            if (imageUrl) {
+                preview.innerHTML = `<img src="${imageUrl}" alt="Character mnemonic">`;
+                preview.classList.remove('hidden');
+                document.getElementById('save-character-btn').classList.remove('hidden');
+                
+                // Store the generated image URL temporarily
+                this.tempCharacterImageUrl = imageUrl;
+            }
+        } catch (error) {
+            console.error('Error generating character image:', error);
+            alert(`Failed to generate image: ${error.message}`);
+        } finally {
+            generateBtn.textContent = 'Generate Mnemonic Image';
+            generateBtn.disabled = false;
+        }
     }
 
     async saveCharacterMnemonic() {
-        // TODO: Implement character mnemonic saving
-        alert('Character mnemonic saving coming soon!');
+        if (!this.tempCharacterImageUrl) {
+            alert('No image to save. Please generate an image first.');
+            return;
+        }
+
+        try {
+            // Save the image URL to the character data
+            this.currentCharacterData.image_url = this.tempCharacterImageUrl;
+            
+            // Update the character in the syllables data structure
+            if (this.currentSyllable && this.syllables[this.currentSyllable]) {
+                const characters = this.syllables[this.currentSyllable].characters;
+                const charIndex = characters.findIndex(char => char.character === this.currentCharacterData.character);
+                if (charIndex !== -1) {
+                    characters[charIndex] = this.currentCharacterData;
+                    
+                    // Save to localStorage
+                    localStorage.setItem('syllables', JSON.stringify(this.syllables));
+                }
+            }
+            
+            // Update the UI to show the saved image
+            const currentImage = document.getElementById('current-character-image');
+            currentImage.innerHTML = `<img src="${this.tempCharacterImageUrl}" alt="${this.currentCharacterData.character}">`;
+            document.getElementById('remove-character-image-btn').classList.remove('hidden');
+            
+            // Hide the generation section and show success message
+            document.getElementById('character-image-preview').classList.add('hidden');
+            document.getElementById('save-character-btn').classList.add('hidden');
+            
+            // Clear temporary storage
+            this.tempCharacterImageUrl = null;
+            
+            alert('Mnemonic image saved successfully!');
+            
+        } catch (error) {
+            console.error('Error saving character mnemonic:', error);
+            alert(`Failed to save mnemonic: ${error.message}`);
+        }
     }
 
     async removeCharacterImage() {
-        // TODO: Implement character image removal
-        alert('Character image removal coming soon!');
+        if (!this.currentCharacterData || !this.currentCharacterData.image_url) {
+            alert('No image to remove.');
+            return;
+        }
+
+        if (!confirm('Are you sure you want to remove this mnemonic image?')) {
+            return;
+        }
+
+        try {
+            // Remove the image URL from character data
+            this.currentCharacterData.image_url = null;
+            
+            // Update the character in the syllables data structure
+            if (this.currentSyllable && this.syllables[this.currentSyllable]) {
+                const characters = this.syllables[this.currentSyllable].characters;
+                const charIndex = characters.findIndex(char => char.character === this.currentCharacterData.character);
+                if (charIndex !== -1) {
+                    characters[charIndex] = this.currentCharacterData;
+                    
+                    // Save to localStorage
+                    localStorage.setItem('syllables', JSON.stringify(this.syllables));
+                }
+            }
+            
+            // Update the UI to show no image
+            const currentImage = document.getElementById('current-character-image');
+            currentImage.innerHTML = '<div class="no-image-placeholder">No mnemonic image yet</div>';
+            document.getElementById('remove-character-image-btn').classList.add('hidden');
+            
+            alert('Mnemonic image removed successfully!');
+            
+        } catch (error) {
+            console.error('Error removing character image:', error);
+            alert(`Failed to remove image: ${error.message}`);
+        }
     }
 
     async addCharacterToDictionary(characterIndex) {
