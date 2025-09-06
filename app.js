@@ -2152,6 +2152,64 @@ class SpacedRepetitionApp {
         alert('Character image removal coming soon!');
     }
 
+    async addCharacterToDictionary(characterIndex) {
+        if (!this.currentTranslation || !this.currentTranslation.characters) {
+            alert('No character data available to add.');
+            return;
+        }
+
+        const characterData = this.currentTranslation.characters[characterIndex];
+        if (!characterData) {
+            alert('Character not found.');
+            return;
+        }
+
+        console.log('📚 Adding character to dictionary:', characterData);
+
+        try {
+            // Create character data for the dictionary
+            const dictionaryCharacter = {
+                id: `char_${characterData.character}_${Date.now()}`,
+                character: characterData.character,
+                pinyin: characterData.pinyin,
+                meaning: 'Unknown meaning', // We could enhance this with a translation API later
+                imageUrl: null,
+                imagePrompt: `Educational mnemonic image for Chinese character ${characterData.character} (${characterData.pinyin})`,
+                mnemonicStory: `Character ${characterData.character} pronounced as "${characterData.pinyin}". Create your own memorable story for this character.`,
+                examples: [`${characterData.character} - (add example sentences)`],
+                frequencyRank: null // Could be determined later
+            };
+
+            // Save to database
+            const result = await this.apiClient.saveCharacter(dictionaryCharacter);
+            console.log('✅ Successfully added character to dictionary:', result);
+
+            // Update the UI to show it's now in dictionary
+            this.updateCharacterCardStatus(characterIndex, true);
+
+            // Show success message
+            alert(`✅ Character "${characterData.character}" (${characterData.pinyin}) added to your dictionary!\n\nYou can now find it in the Dictionary tab where you can add mnemonics and images.`);
+
+        } catch (error) {
+            console.error('❌ Failed to add character to dictionary:', error);
+            alert(`❌ Failed to add character to dictionary: ${error.message}`);
+        }
+    }
+
+    updateCharacterCardStatus(characterIndex, inDictionary) {
+        // Find the character card and update its status
+        const characterCards = document.querySelectorAll('#syllable-images-grid .syllable-card');
+        const targetCard = characterCards[characterIndex];
+        
+        if (targetCard && inDictionary) {
+            // Replace the "Add to Dictionary" button with a status message
+            const button = targetCard.querySelector('.add-to-dictionary-btn');
+            if (button) {
+                button.outerHTML = '<div class="character-status">✅ Added to Dictionary</div>';
+            }
+        }
+    }
+
     async generateSyllableImage() {
         const prompt = document.getElementById('syllable-image-prompt').value.trim();
         const apiKey = document.getElementById('syllable-gemini-api-key').value.trim();
@@ -2638,7 +2696,7 @@ class SpacedRepetitionApp {
         const imagesGrid = document.getElementById('syllable-images-grid');
         imagesGrid.innerHTML = '';
         
-        results.characters.forEach(characterData => {
+        results.characters.forEach((characterData, index) => {
             const characterCard = document.createElement('div');
             characterCard.className = 'syllable-card';
             
@@ -2653,6 +2711,7 @@ class SpacedRepetitionApp {
                         <div class="syllable-pinyin">${characterData.pinyin}</div>
                         <div class="syllable-description">${characterData.meaning || ''}</div>
                         ${characterData.mnemonicStory ? `<div class="mnemonic-story">${characterData.mnemonicStory}</div>` : ''}
+                        <div class="character-status">✅ In Dictionary</div>
                     </div>
                 `;
             } else if (characterData.hasData) {
@@ -2666,10 +2725,11 @@ class SpacedRepetitionApp {
                         <div class="syllable-pinyin">${characterData.pinyin}</div>
                         <div class="syllable-description">${characterData.meaning || ''}</div>
                         ${characterData.mnemonicStory ? `<div class="mnemonic-story">${characterData.mnemonicStory}</div>` : ''}
+                        <div class="character-status">✅ In Dictionary</div>
                     </div>
                 `;
             } else {
-                // No character data - needs mnemonic generation
+                // No character data - show Add to Dictionary option
                 characterCard.innerHTML = `
                     <div class="syllable-placeholder">
                         <div class="no-image">📝</div>
@@ -2677,7 +2737,10 @@ class SpacedRepetitionApp {
                     <div class="syllable-info">
                         <div class="syllable-text">${characterData.character}</div>
                         <div class="syllable-pinyin">${characterData.pinyin}</div>
-                        <div class="syllable-description">Character mnemonic needed</div>
+                        <div class="syllable-description">Not in dictionary yet</div>
+                        <button class="add-to-dictionary-btn" onclick="app.addCharacterToDictionary(${index})" title="Add this character to your personal dictionary">
+                            📚 Add to Dictionary
+                        </button>
                     </div>
                 `;
             }

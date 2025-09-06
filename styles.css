@@ -1087,6 +1087,34 @@ main {
     margin: 0.5rem 0;
 }
 
+/* Add to Dictionary button and status */
+.add-to-dictionary-btn {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    margin-top: 0.5rem;
+    transition: background-color 0.2s ease;
+}
+
+.add-to-dictionary-btn:hover {
+    background: #2563eb;
+}
+
+.character-status {
+    font-size: 0.75rem;
+    color: #059669;
+    margin-top: 0.5rem;
+    padding: 0.25rem;
+    background: #f0fdf4;
+    border-radius: 4px;
+    text-align: center;
+    border: 1px solid #bbf7d0;
+}
+
 .generate-actions {
     padding: 1.5rem 2rem;
     background: #f8f9fa;
