@@ -14,6 +14,7 @@
                 <button id="manage-tab" class="tab-btn active">Manage Cards</button>
                 <button id="review-tab" class="tab-btn">Review</button>
                 <button id="dictionary-tab" class="tab-btn">Dictionary</button>
+                <button id="autogenerate-tab" class="tab-btn">Auto Generate</button>
             </nav>
         </header>
 
@@ -97,6 +98,49 @@
                     </div>
                 </div>
                 <div id="syllable-grid" class="syllable-grid"></div>
+            </section>
+
+            <!-- Auto Generate Section -->
+            <section id="autogenerate-section" class="section">
+                <div class="autogenerate-header">
+                    <h2>🤖 Auto Generate Cards</h2>
+                    <p>Enter English phrases to automatically translate to Chinese with pinyin and syllable images.</p>
+                </div>
+                
+                <div class="autogenerate-input">
+                    <div class="form-group">
+                        <label for="english-phrase">English Phrase:</label>
+                        <textarea id="english-phrase" rows="3" placeholder="Enter English phrase or sentence..."></textarea>
+                    </div>
+                    <button id="translate-btn" class="btn primary">🔄 Translate & Generate</button>
+                </div>
+
+                <div id="translation-result" class="translation-result hidden">
+                    <div class="translation-row">
+                        <div class="translation-section">
+                            <h3>🇬🇧 English</h3>
+                            <div id="english-text" class="text-display"></div>
+                        </div>
+                        <div class="translation-section">
+                            <h3>🇨🇳 Chinese Characters</h3>
+                            <div id="chinese-text" class="text-display chinese-characters"></div>
+                        </div>
+                        <div class="translation-section">
+                            <h3>🗣️ Pinyin</h3>
+                            <div id="pinyin-text" class="text-display pinyin-text"></div>
+                        </div>
+                    </div>
+
+                    <div class="syllable-images-section">
+                        <h3>🖼️ Syllable Images</h3>
+                        <div id="syllable-images-grid" class="syllable-images-grid"></div>
+                    </div>
+
+                    <div class="generate-actions">
+                        <button id="create-card-from-translation" class="btn primary">✨ Create Flash Card</button>
+                        <button id="save-translation" class="btn secondary">💾 Save Translation</button>
+                    </div>
+                </div>
             </section>
         </main>
     </div>

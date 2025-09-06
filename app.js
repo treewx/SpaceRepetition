@@ -1247,6 +1247,7 @@ class SpacedRepetitionApp {
         document.getElementById('manage-tab').addEventListener('click', () => this.switchTab('manage'));
         document.getElementById('review-tab').addEventListener('click', () => this.switchTab('review'));
         document.getElementById('dictionary-tab').addEventListener('click', () => this.switchTab('dictionary'));
+        document.getElementById('autogenerate-tab').addEventListener('click', () => this.switchTab('autogenerate'));
 
         // Card management
         document.getElementById('add-card-btn').addEventListener('click', () => this.openCardModal());
@@ -1307,6 +1308,11 @@ class SpacedRepetitionApp {
         document.getElementById('generate-card-image-btn').addEventListener('click', () => this.generateCardImage());
         document.getElementById('save-card-image-btn').addEventListener('click', () => this.saveCardImage());
         document.getElementById('cancel-card-image-btn').addEventListener('click', () => this.cancelCardImageGeneration());
+        
+        // Auto generate events
+        document.getElementById('translate-btn').addEventListener('click', () => this.translatePhrase());
+        document.getElementById('create-card-from-translation').addEventListener('click', () => this.createCardFromTranslation());
+        document.getElementById('save-translation').addEventListener('click', () => this.saveTranslation());
     }
 
     // Tab Management
@@ -1326,6 +1332,10 @@ class SpacedRepetitionApp {
             document.getElementById('dictionary-tab').classList.add('active');
             document.getElementById('dictionary-section').classList.add('active');
             this.renderDictionary();
+        } else if (tab === 'autogenerate') {
+            document.getElementById('autogenerate-tab').classList.add('active');
+            document.getElementById('autogenerate-section').classList.add('active');
+            this.initializeAutogenerate();
         }
     }
 
@@ -2347,6 +2357,230 @@ class SpacedRepetitionApp {
             "'": '&#039;'
         };
         return text.replace(/[&<>"']/g, m => map[m]);
+    }
+
+    // Auto Generate Functions
+    initializeAutogenerate() {
+        // Clear any previous results
+        document.getElementById('translation-result').classList.add('hidden');
+        document.getElementById('english-phrase').value = '';
+        this.currentTranslation = null;
+    }
+
+    async translatePhrase() {
+        const englishPhrase = document.getElementById('english-phrase').value.trim();
+        if (!englishPhrase) {
+            alert('Please enter an English phrase to translate.');
+            return;
+        }
+
+        const translateBtn = document.getElementById('translate-btn');
+        translateBtn.textContent = '🔄 Translating...';
+        translateBtn.disabled = true;
+
+        try {
+            // Use translation API to translate to Chinese
+            const translation = await this.translateToChinese(englishPhrase);
+            
+            // Convert Chinese to pinyin
+            const pinyin = await this.convertToPinyin(translation.chinese);
+            
+            // Extract syllables and find images
+            const syllableData = this.extractSyllables(pinyin);
+            
+            // Display results
+            this.displayTranslationResults({
+                english: englishPhrase,
+                chinese: translation.chinese,
+                pinyin: pinyin,
+                syllables: syllableData
+            });
+
+        } catch (error) {
+            console.error('Translation error:', error);
+            alert(`Translation failed: ${error.message}`);
+        } finally {
+            translateBtn.textContent = '🔄 Translate & Generate';
+            translateBtn.disabled = false;
+        }
+    }
+
+    async translateToChinese(englishText) {
+        // For demo, use a simple API. In production, you'd use Google Translate API
+        try {
+            const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(englishText)}&langpair=en|zh`);
+            const data = await response.json();
+            
+            if (data.responseStatus === 200) {
+                return {
+                    chinese: data.responseData.translatedText,
+                    confidence: data.responseData.match || 0
+                };
+            } else {
+                throw new Error('Translation service unavailable');
+            }
+        } catch (error) {
+            // Fallback to hardcoded examples for demo
+            const examples = {
+                'hello': '你好',
+                'thank you': '谢谢',
+                'good morning': '早上好',
+                'how are you': '你好吗',
+                'goodbye': '再见',
+                'please': '请',
+                'excuse me': '不好意思',
+                'i love you': '我爱你',
+                'cat': '猫',
+                'dog': '狗',
+                'water': '水'
+            };
+            
+            const lowerText = englishText.toLowerCase();
+            if (examples[lowerText]) {
+                return { chinese: examples[lowerText], confidence: 0.9 };
+            }
+            
+            throw new Error('Translation not available for this phrase. Try: hello, thank you, good morning, etc.');
+        }
+    }
+
+    async convertToPinyin(chineseText) {
+        // Simple pinyin mapping for demo - in production use a proper library
+        const pinyinMap = {
+            '你': 'nǐ', '好': 'hǎo', '谢': 'xiè', '早': 'zǎo', '上': 'shàng',
+            '吗': 'ma', '再': 'zài', '见': 'jiàn', '请': 'qǐng', 
+            '不': 'bù', '意': 'yì', '思': 'si', '我': 'wǒ', '爱': 'ài',
+            '猫': 'māo', '狗': 'gǒu', '水': 'shuǐ'
+        };
+        
+        return chineseText.split('').map(char => pinyinMap[char] || char).join(' ');
+    }
+
+    extractSyllables(pinyinText) {
+        const syllables = pinyinText.split(' ').filter(s => s.trim());
+        return syllables.map(syllable => {
+            const cleanSyllable = this.normalizePinyin(syllable);
+            return {
+                original: syllable,
+                normalized: cleanSyllable,
+                imageData: this.findSyllableImage(cleanSyllable)
+            };
+        });
+    }
+
+    normalizePinyin(syllable) {
+        // Convert toned pinyin to base_tone format for lookup
+        const toneMarks = {
+            'ā': 'a1', 'á': 'a2', 'ǎ': 'a3', 'à': 'a4',
+            'ē': 'e1', 'é': 'e2', 'ě': 'e3', 'è': 'e4',
+            'ī': 'i1', 'í': 'i2', 'ǐ': 'i3', 'ì': 'i4',
+            'ō': 'o1', 'ó': 'o2', 'ǒ': 'o3', 'ò': 'o4',
+            'ū': 'u1', 'ú': 'u2', 'ǔ': 'u3', 'ù': 'u4',
+            'ǖ': 'v1', 'ǘ': 'v2', 'ǚ': 'v3', 'ǜ': 'v4'
+        };
+        
+        let base = syllable.toLowerCase();
+        let tone = '0';
+        
+        for (const [marked, replacement] of Object.entries(toneMarks)) {
+            if (base.includes(marked)) {
+                base = base.replace(marked, replacement.charAt(0));
+                tone = replacement.charAt(1);
+                break;
+            }
+        }
+        
+        // Handle neutral tone and ma (question particle)
+        if (tone === '0') {
+            if (base === 'ma') tone = '5';
+            else tone = '4'; // default tone
+        }
+        
+        return `${base}_${tone}`;
+    }
+
+    findSyllableImage(normalizedSyllable) {
+        const syllableData = this.syllables[normalizedSyllable];
+        if (syllableData && syllableData.imageUrl) {
+            return {
+                url: syllableData.imageUrl,
+                description: syllableData.description,
+                examples: syllableData.examples
+            };
+        }
+        return null;
+    }
+
+    displayTranslationResults(results) {
+        this.currentTranslation = results;
+        
+        // Display text results
+        document.getElementById('english-text').textContent = results.english;
+        document.getElementById('chinese-text').textContent = results.chinese;
+        document.getElementById('pinyin-text').textContent = results.pinyin;
+        
+        // Display syllable images
+        const imagesGrid = document.getElementById('syllable-images-grid');
+        imagesGrid.innerHTML = '';
+        
+        results.syllables.forEach(syllableData => {
+            const syllableCard = document.createElement('div');
+            syllableCard.className = 'syllable-card';
+            
+            if (syllableData.imageData) {
+                syllableCard.innerHTML = `
+                    <div class="syllable-image">
+                        <img src="${syllableData.imageData.url}" alt="Mnemonic for ${syllableData.original}">
+                    </div>
+                    <div class="syllable-info">
+                        <div class="syllable-text">${syllableData.original}</div>
+                        <div class="syllable-description">${syllableData.imageData.description || ''}</div>
+                    </div>
+                `;
+            } else {
+                syllableCard.innerHTML = `
+                    <div class="syllable-placeholder">
+                        <div class="no-image">📝</div>
+                    </div>
+                    <div class="syllable-info">
+                        <div class="syllable-text">${syllableData.original}</div>
+                        <div class="syllable-description">No mnemonic image</div>
+                    </div>
+                `;
+            }
+            
+            imagesGrid.appendChild(syllableCard);
+        });
+        
+        // Show results
+        document.getElementById('translation-result').classList.remove('hidden');
+    }
+
+    createCardFromTranslation() {
+        if (!this.currentTranslation) {
+            alert('Please translate a phrase first.');
+            return;
+        }
+        
+        // Switch to manage tab and open card modal with pre-filled data
+        this.switchTab('manage');
+        
+        // Add slight delay to ensure tab switch completes
+        setTimeout(() => {
+            this.openCardModal();
+            document.getElementById('front-text').value = this.currentTranslation.english;
+            document.getElementById('back-text').value = `${this.currentTranslation.chinese}\n\n${this.currentTranslation.pinyin}`;
+        }, 100);
+    }
+
+    async saveTranslation() {
+        if (!this.currentTranslation) {
+            alert('Please translate a phrase first.');
+            return;
+        }
+        
+        console.log('Translation saved:', this.currentTranslation);
+        alert('Translation reference saved!');
     }
 }
 

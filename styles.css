@@ -821,3 +821,232 @@ main {
         margin: 1rem;
     }
 }
+
+/* Auto Generate Styles */
+.autogenerate-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding: 1rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 8px;
+}
+
+.autogenerate-header h2 {
+    margin-bottom: 0.5rem;
+    font-size: 1.8rem;
+}
+
+.autogenerate-header p {
+    opacity: 0.9;
+    font-size: 1rem;
+}
+
+.autogenerate-input {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+}
+
+.autogenerate-input .form-group {
+    margin-bottom: 1.5rem;
+}
+
+.autogenerate-input textarea {
+    width: 100%;
+    min-height: 80px;
+    padding: 1rem;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: inherit;
+    resize: vertical;
+    transition: border-color 0.3s ease;
+}
+
+.autogenerate-input textarea:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.translation-result {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.translation-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 0;
+}
+
+.translation-section {
+    padding: 1.5rem;
+    border-right: 1px solid #e1e5e9;
+}
+
+.translation-section:last-child {
+    border-right: none;
+}
+
+.translation-section h3 {
+    margin-bottom: 1rem;
+    color: #333;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.text-display {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 6px;
+    border: 1px solid #e1e5e9;
+    min-height: 60px;
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+.chinese-characters {
+    font-size: 1.5rem;
+    font-weight: 500;
+}
+
+.pinyin-text {
+    font-family: 'Times New Roman', serif;
+    font-size: 1.2rem;
+}
+
+.syllable-images-section {
+    padding: 2rem;
+    border-top: 1px solid #e1e5e9;
+    background: #fafbfc;
+}
+
+.syllable-images-section h3 {
+    margin-bottom: 1.5rem;
+    color: #333;
+    font-size: 1.2rem;
+    text-align: center;
+}
+
+.syllable-images-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.syllable-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.syllable-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.syllable-image {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 0.5rem;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #f8f9fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.syllable-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.syllable-placeholder {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 0.5rem;
+    border-radius: 6px;
+    background: #e9ecef;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px dashed #ced4da;
+}
+
+.no-image {
+    font-size: 2rem;
+    opacity: 0.5;
+}
+
+.syllable-info {
+    text-align: center;
+}
+
+.syllable-text {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: #333;
+    margin-bottom: 0.25rem;
+}
+
+.syllable-description {
+    font-size: 0.8rem;
+    color: #666;
+    line-height: 1.3;
+}
+
+.generate-actions {
+    padding: 1.5rem 2rem;
+    background: #f8f9fa;
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.generate-actions .btn {
+    min-width: 180px;
+}
+
+/* Responsive design for autogenerate */
+@media (max-width: 768px) {
+    .translation-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .translation-section {
+        border-right: none;
+        border-bottom: 1px solid #e1e5e9;
+    }
+    
+    .translation-section:last-child {
+        border-bottom: none;
+    }
+    
+    .syllable-images-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 0.8rem;
+    }
+    
+    .generate-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .generate-actions .btn {
+        min-width: auto;
+        width: 100%;
+        max-width: 300px;
+    }
+}
