@@ -1994,9 +1994,10 @@ class SpacedRepetitionApp {
     async loadCharacters() {
         try {
             this.characters = await this.apiClient.getCharacters();
-            console.log('✅ Loaded characters for dictionary:', this.characters);
+            console.log('✅ Loaded characters from database:', this.characters);
+            console.log('✅ Characters with images:', this.characters.filter(c => c.image_url));
         } catch (error) {
-            console.error('❌ Failed to load characters from API:', error);
+            console.error('❌ Failed to load characters from database:', error);
             this.characters = [];
         }
     }
@@ -2096,16 +2097,6 @@ class SpacedRepetitionApp {
             };
         }
         
-        // Check if we have saved data in separate character storage
-        const characterStorage = JSON.parse(localStorage.getItem('characterStorage') || '{}');
-        if (characterStorage[characterText]) {
-            // Merge saved data with current data, preferring saved data
-            this.currentCharacterData = {
-                ...this.currentCharacterData,
-                ...characterStorage[characterText]
-            };
-            console.log('Loaded character data from character storage:', this.currentCharacterData);
-        }
         
         document.getElementById('character-modal-title').textContent = `Create Mnemonic for: ${characterText}`;
         document.getElementById('current-character').textContent = characterText;
@@ -2203,62 +2194,56 @@ class SpacedRepetitionApp {
             return;
         }
 
-        console.log('Saving character mnemonic...');
+        console.log('Saving character mnemonic to database...');
         console.log('Current character data:', this.currentCharacterData);
-        console.log('Current syllable:', this.currentSyllable);
-        console.log('Temp image URL:', this.tempCharacterImageUrl);
 
         try {
-            // Save the image URL to the character data
-            this.currentCharacterData.image_url = this.tempCharacterImageUrl;
-            
-            let saved = false;
-            
-            // Update the character in the syllables data structure
-            if (this.currentSyllable && this.syllables[this.currentSyllable]) {
-                const characters = this.syllables[this.currentSyllable].characters;
-                const charIndex = characters.findIndex(char => char.character === this.currentCharacterData.character);
-                console.log('Found character at index:', charIndex);
-                if (charIndex !== -1) {
-                    characters[charIndex] = this.currentCharacterData;
-                    
-                    // Save to localStorage
-                    localStorage.setItem('syllables', JSON.stringify(this.syllables));
-                    saved = true;
-                    console.log('Saved to syllables structure');
-                }
+            // Prepare character data for database with the image URL
+            const characterDataToSave = {
+                ...this.currentCharacterData,
+                image_url: this.tempCharacterImageUrl,
+                image_prompt: document.getElementById('character-image-prompt').value.trim(),
+                mnemonic_story: document.getElementById('character-mnemonic-story').value.trim()
+            };
+
+            console.log('Saving character data to database:', characterDataToSave);
+
+            // Try to update existing character first
+            try {
+                await this.apiClient.updateCharacter(this.currentCharacterData.character, characterDataToSave);
+                console.log('✅ Updated existing character in database');
+            } catch (updateError) {
+                console.log('Character not found, creating new one...');
+                // If update fails, create new character
+                await this.apiClient.saveCharacter(characterDataToSave);
+                console.log('✅ Created new character in database');
             }
+
+            // Update local data
+            this.currentCharacterData = characterDataToSave;
+
+            // Update the UI to show the saved image
+            const currentImage = document.getElementById('current-character-image');
+            currentImage.innerHTML = `<img src="${this.tempCharacterImageUrl}" alt="${this.currentCharacterData.character}">`;
+            document.getElementById('remove-character-image-btn').classList.remove('hidden');
             
-            // If not saved in syllables, try to save in a separate character storage
-            if (!saved) {
-                console.log('Character not found in syllables, saving separately');
-                let characterStorage = JSON.parse(localStorage.getItem('characterStorage') || '{}');
-                characterStorage[this.currentCharacterData.character] = this.currentCharacterData;
-                localStorage.setItem('characterStorage', JSON.stringify(characterStorage));
-                saved = true;
-                console.log('Saved to character storage');
-            }
+            // Hide the generation section and show success message
+            document.getElementById('character-image-preview').classList.add('hidden');
+            document.getElementById('save-character-btn').classList.add('hidden');
             
-            if (saved) {
-                // Update the UI to show the saved image
-                const currentImage = document.getElementById('current-character-image');
-                currentImage.innerHTML = `<img src="${this.tempCharacterImageUrl}" alt="${this.currentCharacterData.character}">`;
-                document.getElementById('remove-character-image-btn').classList.remove('hidden');
-                
-                // Hide the generation section and show success message
-                document.getElementById('character-image-preview').classList.add('hidden');
-                document.getElementById('save-character-btn').classList.add('hidden');
-                
-                // Clear temporary storage
-                this.tempCharacterImageUrl = null;
-                
-                alert('Mnemonic image saved successfully!');
-            } else {
-                throw new Error('Failed to find appropriate storage location for character');
-            }
+            // Clear temporary storage
+            this.tempCharacterImageUrl = null;
+            
+            // Refresh the character display from database to show the saved image
+            await this.loadCharacters();
+            this.filterCharacters();
+            this.renderCharacterGrid();
+            this.updateCharacterStats();
+            
+            alert('Mnemonic image saved successfully to database!');
             
         } catch (error) {
-            console.error('Error saving character mnemonic:', error);
+            console.error('Error saving character mnemonic to database:', error);
             alert(`Failed to save mnemonic: ${error.message}`);
         }
     }
@@ -2274,41 +2259,36 @@ class SpacedRepetitionApp {
         }
 
         try {
-            // Remove the image URL from character data
-            this.currentCharacterData.image_url = null;
+            console.log('Removing character image from database...');
             
-            let removed = false;
-            
-            // Update the character in the syllables data structure
-            if (this.currentSyllable && this.syllables[this.currentSyllable]) {
-                const characters = this.syllables[this.currentSyllable].characters;
-                const charIndex = characters.findIndex(char => char.character === this.currentCharacterData.character);
-                if (charIndex !== -1) {
-                    characters[charIndex] = this.currentCharacterData;
-                    
-                    // Save to localStorage
-                    localStorage.setItem('syllables', JSON.stringify(this.syllables));
-                    removed = true;
-                }
-            }
-            
-            // Also remove from separate character storage
-            let characterStorage = JSON.parse(localStorage.getItem('characterStorage') || '{}');
-            if (characterStorage[this.currentCharacterData.character]) {
-                characterStorage[this.currentCharacterData.character] = this.currentCharacterData;
-                localStorage.setItem('characterStorage', JSON.stringify(characterStorage));
-                removed = true;
-            }
+            // Prepare character data without the image
+            const characterDataToSave = {
+                ...this.currentCharacterData,
+                image_url: null
+            };
+
+            // Update character in database
+            await this.apiClient.updateCharacter(this.currentCharacterData.character, characterDataToSave);
+            console.log('✅ Removed character image from database');
+
+            // Update local data
+            this.currentCharacterData = characterDataToSave;
             
             // Update the UI to show no image
             const currentImage = document.getElementById('current-character-image');
             currentImage.innerHTML = '<div class="no-image-placeholder">No mnemonic image yet</div>';
             document.getElementById('remove-character-image-btn').classList.add('hidden');
             
-            alert('Mnemonic image removed successfully!');
+            // Refresh the character display from database
+            await this.loadCharacters();
+            this.filterCharacters();
+            this.renderCharacterGrid();
+            this.updateCharacterStats();
+            
+            alert('Mnemonic image removed successfully from database!');
             
         } catch (error) {
-            console.error('Error removing character image:', error);
+            console.error('Error removing character image from database:', error);
             alert(`Failed to remove image: ${error.message}`);
         }
     }

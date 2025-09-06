@@ -63,6 +63,9 @@ Cards are stored as objects with these properties:
 }
 ```
 
+### Use Database only for storing images
+Do not use LocalStorage to store images. It is no where big enough. Every image must be saved to Database and database only.
+
 ### API Integration
 
 **Google Gemini API**: 

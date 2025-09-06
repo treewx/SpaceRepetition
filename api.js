@@ -102,6 +102,13 @@ class APIClient {
             body: JSON.stringify(characterData),
         });
     }
+
+    async updateCharacter(character, characterData) {
+        return this.request(`/api/characters/${encodeURIComponent(character)}`, {
+            method: 'PUT',
+            body: JSON.stringify(characterData),
+        });
+    }
 }
 
 // Create global API client instance
