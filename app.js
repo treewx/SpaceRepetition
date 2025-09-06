@@ -1068,9 +1068,9 @@ class SpacedRepetitionApp {
 
             this.filteredSyllables = Object.keys(this.syllables);
             
-            // If no syllables found, initialize them
+            // If no syllables found, initialize them locally
             if (syllablesData.length === 0) {
-                await this.initializePinyinSyllablesInDB();
+                this.initializePinyinSyllables();
             }
         } catch (error) {
             console.error('Failed to load syllables from API:', error);
