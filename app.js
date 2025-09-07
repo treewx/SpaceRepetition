@@ -2081,10 +2081,14 @@ class SpacedRepetitionApp {
     async openCharacterModal(characterText) {
         this.currentCharacter = characterText;
         
+        console.log('🔍 Opening modal for character:', characterText);
+        
         try {
             const character = await this.apiClient.getCharacter(characterText);
             this.currentCharacterData = character;
+            console.log('✅ Loaded character from database:', character);
         } catch (error) {
+            console.log('⚠️ Character not found in database, creating empty structure');
             // Character not found in database, create empty data structure
             this.currentCharacterData = {
                 character: characterText,
@@ -2094,6 +2098,17 @@ class SpacedRepetitionApp {
                 image_prompt: '',
                 mnemonic_story: '',
                 examples: []
+            };
+        }
+        
+        // Additional check: Make sure we have the most up-to-date data by refreshing characters
+        await this.loadCharacters();
+        const updatedCharacter = this.characters.find(c => c.character === characterText);
+        if (updatedCharacter && updatedCharacter.image_url) {
+            console.log('🔄 Found updated character data with image:', updatedCharacter);
+            this.currentCharacterData = {
+                ...this.currentCharacterData,
+                ...updatedCharacter
             };
         }
         
@@ -2120,10 +2135,13 @@ class SpacedRepetitionApp {
         
         // Show current image or placeholder
         const currentImage = document.getElementById('current-character-image');
+        console.log('🖼️ Character image_url:', this.currentCharacterData.image_url);
         if (this.currentCharacterData.image_url) {
+            console.log('✅ Displaying saved character image');
             currentImage.innerHTML = `<img src="${this.currentCharacterData.image_url}" alt="${characterText}">`;
             document.getElementById('remove-character-image-btn').classList.remove('hidden');
         } else {
+            console.log('❌ No image found, showing placeholder');
             currentImage.innerHTML = '<div class="no-image-placeholder">No mnemonic image yet</div>';
             document.getElementById('remove-character-image-btn').classList.add('hidden');
         }
