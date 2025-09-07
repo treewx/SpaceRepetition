@@ -29,7 +29,6 @@ class SpacedRepetitionApp {
             placedCharacters: [], // Array of {characterId, x, y, imageUrl, character, pinyin}
             isDragMode: false
         };
-        this.loadMemoryPalace();
         
         this.initializePinyinSyllables();
         this.init();
@@ -2993,18 +2992,30 @@ class SpacedRepetitionApp {
     // Memory Palace Methods
     async initializeMemoryPalace() {
         console.log('🏛️ Initializing Memory Palace');
+        await this.loadMemoryPalace();
         await this.renderMemoryPalace();
         await this.renderCharacterPalette();
     }
 
-    loadMemoryPalace() {
+    async loadMemoryPalace() {
         try {
+            // Load character positions from localStorage
             const saved = localStorage.getItem('memoryPalace');
             if (saved) {
                 const data = JSON.parse(saved);
-                this.memoryPalace.backgroundImage = data.backgroundImage;
                 this.memoryPalace.placedCharacters = data.placedCharacters || [];
-                console.log('📥 Loaded Memory Palace:', this.memoryPalace);
+                
+                // Load background image from IndexedDB if it exists
+                if (data.hasBackgroundImage) {
+                    this.memoryPalace.backgroundImage = await this.loadBackgroundImageFromIndexedDB();
+                } else {
+                    this.memoryPalace.backgroundImage = null;
+                }
+                
+                console.log('📥 Loaded Memory Palace:', {
+                    hasBackground: !!this.memoryPalace.backgroundImage,
+                    charactersCount: this.memoryPalace.placedCharacters.length
+                });
             }
         } catch (error) {
             console.error('Error loading Memory Palace:', error);
@@ -3016,12 +3027,16 @@ class SpacedRepetitionApp {
         }
     }
 
-    saveMemoryPalace() {
+    async saveMemoryPalace() {
         try {
-            // Don't store images in localStorage due to quota limits
-            // Only store character positions and references
+            // Save background image to IndexedDB (higher storage limit)
+            if (this.memoryPalace.backgroundImage) {
+                await this.saveBackgroundImageToIndexedDB(this.memoryPalace.backgroundImage);
+            }
+            
+            // Only store character positions and references in localStorage
             const data = {
-                backgroundImage: this.memoryPalace.backgroundImage, // Keep background image for now
+                hasBackgroundImage: !!this.memoryPalace.backgroundImage,
                 placedCharacters: this.memoryPalace.placedCharacters.map(item => ({
                     characterId: item.characterId,
                     character: item.character,
@@ -3032,31 +3047,81 @@ class SpacedRepetitionApp {
                 }))
             };
             localStorage.setItem('memoryPalace', JSON.stringify(data));
-            console.log('💾 Saved Memory Palace:', data);
+            console.log('💾 Saved Memory Palace positions to localStorage:', data);
         } catch (error) {
             console.error('Error saving Memory Palace:', error);
-            // If still quota exceeded, try without background image
-            if (error.name === 'QuotaExceededError') {
-                try {
-                    const minimalData = {
-                        backgroundImage: null,
-                        placedCharacters: this.memoryPalace.placedCharacters.map(item => ({
-                            characterId: item.characterId,
-                            character: item.character,
-                            pinyin: item.pinyin,
-                            x: item.x,
-                            y: item.y
-                        }))
-                    };
-                    localStorage.setItem('memoryPalace', JSON.stringify(minimalData));
-                    console.log('💾 Saved Memory Palace (without background):', minimalData);
-                    alert('Storage full! Background image not saved. Character positions saved successfully.');
-                } catch (secondError) {
-                    console.error('Failed to save Memory Palace even without background:', secondError);
-                    alert('Storage full! Unable to save Memory Palace. Please free up some space.');
-                }
-            }
+            alert('Error saving Memory Palace. Please try again.');
         }
+    }
+
+    async saveBackgroundImageToIndexedDB(imageData) {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open('MemoryPalaceDB', 1);
+            
+            request.onerror = () => reject(request.error);
+            
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+                if (!db.objectStoreNames.contains('backgrounds')) {
+                    db.createObjectStore('backgrounds', { keyPath: 'id' });
+                }
+            };
+            
+            request.onsuccess = (event) => {
+                const db = event.target.result;
+                const transaction = db.transaction(['backgrounds'], 'readwrite');
+                const store = transaction.objectStore('backgrounds');
+                
+                const data = {
+                    id: 'current',
+                    imageData: imageData,
+                    timestamp: Date.now()
+                };
+                
+                const saveRequest = store.put(data);
+                saveRequest.onsuccess = () => {
+                    console.log('💾 Background image saved to IndexedDB');
+                    resolve();
+                };
+                saveRequest.onerror = () => reject(saveRequest.error);
+            };
+        });
+    }
+
+    async loadBackgroundImageFromIndexedDB() {
+        return new Promise((resolve) => {
+            const request = indexedDB.open('MemoryPalaceDB', 1);
+            
+            request.onerror = () => {
+                console.log('IndexedDB not available, background image not loaded');
+                resolve(null);
+            };
+            
+            request.onsuccess = (event) => {
+                const db = event.target.result;
+                
+                if (!db.objectStoreNames.contains('backgrounds')) {
+                    resolve(null);
+                    return;
+                }
+                
+                const transaction = db.transaction(['backgrounds'], 'readonly');
+                const store = transaction.objectStore('backgrounds');
+                const getRequest = store.get('current');
+                
+                getRequest.onsuccess = () => {
+                    const result = getRequest.result;
+                    if (result) {
+                        console.log('📥 Background image loaded from IndexedDB');
+                        resolve(result.imageData);
+                    } else {
+                        resolve(null);
+                    }
+                };
+                
+                getRequest.onerror = () => resolve(null);
+            };
+        });
     }
 
     uploadPalaceImage() {
@@ -3071,7 +3136,7 @@ class SpacedRepetitionApp {
         reader.onload = async (e) => {
             this.memoryPalace.backgroundImage = e.target.result;
             await this.renderMemoryPalace();
-            this.saveMemoryPalace();
+            await this.saveMemoryPalace();
         };
         reader.readAsDataURL(file);
     }
@@ -3184,7 +3249,7 @@ class SpacedRepetitionApp {
             }
             
             await this.renderMemoryPalace();
-            this.saveMemoryPalace();
+            await this.saveMemoryPalace();
         });
     }
 
@@ -3291,6 +3356,9 @@ class SpacedRepetitionApp {
 
     async clearMemoryPalace() {
         if (confirm('Are you sure you want to clear your Memory Palace? This will remove the background image and all placed characters.')) {
+            // Clear IndexedDB background image
+            await this.clearBackgroundImageFromIndexedDB();
+            
             this.memoryPalace = {
                 backgroundImage: null,
                 placedCharacters: [],
@@ -3298,8 +3366,42 @@ class SpacedRepetitionApp {
             };
             await this.renderMemoryPalace();
             await this.renderCharacterPalette();
-            this.saveMemoryPalace();
+            await this.saveMemoryPalace();
         }
+    }
+
+    async clearBackgroundImageFromIndexedDB() {
+        return new Promise((resolve) => {
+            const request = indexedDB.open('MemoryPalaceDB', 1);
+            
+            request.onerror = () => {
+                console.log('IndexedDB not available, background image clear skipped');
+                resolve();
+            };
+            
+            request.onsuccess = (event) => {
+                const db = event.target.result;
+                
+                if (!db.objectStoreNames.contains('backgrounds')) {
+                    resolve();
+                    return;
+                }
+                
+                const transaction = db.transaction(['backgrounds'], 'readwrite');
+                const store = transaction.objectStore('backgrounds');
+                const deleteRequest = store.delete('current');
+                
+                deleteRequest.onsuccess = () => {
+                    console.log('🗑️ Background image cleared from IndexedDB');
+                    resolve();
+                };
+                
+                deleteRequest.onerror = () => {
+                    console.log('Error clearing background image from IndexedDB');
+                    resolve();
+                };
+            };
+        });
     }
 }
 
