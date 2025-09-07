@@ -3196,7 +3196,7 @@ class SpacedRepetitionApp {
             
             if (imageUrl) {
                 element.innerHTML = `
-                    <img src="${imageUrl}" alt="${item.character}">
+                    <img src="${this.base64ToDataUrl(imageUrl)}" alt="${item.character}">
                     <div class="character-overlay">${item.character}</div>
                 `;
             } else {
@@ -3296,7 +3296,7 @@ class SpacedRepetitionApp {
                 
                 element.innerHTML = `
                     <div class="palette-character-image">
-                        <img src="${character.image_url}" alt="${character.character}">
+                        <img src="${this.base64ToDataUrl(character.image_url)}" alt="${character.character}">
                     </div>
                     <div class="palette-character-text">${character.character}</div>
                     <div class="palette-character-pinyin">${character.pinyin || ''}</div>
