@@ -2230,17 +2230,10 @@ class SpacedRepetitionApp {
 
             console.log('Saving character data to database:', characterDataToSave);
 
-            // Try to update existing character first
-            try {
-                await this.apiClient.updateCharacter(this.currentCharacterData.character, characterDataToSave);
-                console.log('✅ Updated existing character in database');
-            } catch (updateError) {
-                console.log('Character not found, creating new one...', updateError);
-                console.log('Data being sent to create character:', characterDataToSave);
-                // If update fails, create new character
-                const createResult = await this.apiClient.saveCharacter(characterDataToSave);
-                console.log('✅ Created new character in database:', createResult);
-            }
+            // Server doesn't have PUT endpoint for characters, use POST which handles both create/update via UPSERT
+            console.log('Data being sent to save character:', characterDataToSave);
+            const result = await this.apiClient.saveCharacter(characterDataToSave);
+            console.log('✅ Saved character to database:', result);
 
             // Update local data
             this.currentCharacterData = characterDataToSave;
@@ -2291,8 +2284,8 @@ class SpacedRepetitionApp {
                 imageUrl: null
             };
 
-            // Update character in database
-            await this.apiClient.updateCharacter(this.currentCharacterData.character, characterDataToSave);
+            // Update character in database (use POST since server doesn't have PUT endpoint)
+            await this.apiClient.saveCharacter(characterDataToSave);
             console.log('✅ Removed character image from database');
 
             // Update local data
