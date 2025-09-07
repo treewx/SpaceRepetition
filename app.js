@@ -2060,7 +2060,7 @@ class SpacedRepetitionApp {
                         ${character.frequency_rank ? `<div class="character-rank">#${character.frequency_rank}</div>` : ''}
                     </div>
                     ${character.image_url ? 
-                        `<div class="character-image"><img src="${character.image_url}" alt="${character.character}"></div>` :
+                        `<div class="character-image"><img src="${this.base64ToDataUrl(character.image_url)}" alt="${character.character}"></div>` :
                         '<div class="character-placeholder">No mnemonic</div>'
                     }
                     ${character.mnemonic_story ? 
@@ -2138,7 +2138,10 @@ class SpacedRepetitionApp {
         console.log('🖼️ Character image_url:', this.currentCharacterData.image_url);
         if (this.currentCharacterData.image_url) {
             console.log('✅ Displaying saved character image');
-            currentImage.innerHTML = `<img src="${this.currentCharacterData.image_url}" alt="${characterText}">`;
+            // Convert base64 to data URL for display (like cards do)
+            const imageDataUrl = this.base64ToDataUrl(this.currentCharacterData.image_url);
+            console.log('🖼️ Converted image data URL:', imageDataUrl?.substring(0, 50) + '...');
+            currentImage.innerHTML = `<img src="${imageDataUrl}" alt="${characterText}">`;
             document.getElementById('remove-character-image-btn').classList.remove('hidden');
         } else {
             console.log('❌ No image found, showing placeholder');
@@ -2216,10 +2219,10 @@ class SpacedRepetitionApp {
         console.log('Current character data:', this.currentCharacterData);
 
         try {
-            // Prepare character data for database with the image URL
+            // Prepare character data for database with the image URL (convert to base64 like cards)
             const characterDataToSave = {
                 ...this.currentCharacterData,
-                image_url: this.tempCharacterImageUrl,
+                image_url: this.dataUrlToBase64(this.tempCharacterImageUrl),
                 image_prompt: document.getElementById('character-image-prompt').value.trim(),
                 mnemonic_story: document.getElementById('character-mnemonic-story').value.trim()
             };
@@ -2231,10 +2234,11 @@ class SpacedRepetitionApp {
                 await this.apiClient.updateCharacter(this.currentCharacterData.character, characterDataToSave);
                 console.log('✅ Updated existing character in database');
             } catch (updateError) {
-                console.log('Character not found, creating new one...');
+                console.log('Character not found, creating new one...', updateError);
+                console.log('Data being sent to create character:', characterDataToSave);
                 // If update fails, create new character
-                await this.apiClient.saveCharacter(characterDataToSave);
-                console.log('✅ Created new character in database');
+                const createResult = await this.apiClient.saveCharacter(characterDataToSave);
+                console.log('✅ Created new character in database:', createResult);
             }
 
             // Update local data
