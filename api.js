@@ -109,6 +109,12 @@ class APIClient {
             body: JSON.stringify(characterData),
         });
     }
+
+    async deleteCharacter(character) {
+        return this.request(`/api/characters/${encodeURIComponent(character)}`, {
+            method: 'DELETE',
+        });
+    }
 }
 
 // Create global API client instance

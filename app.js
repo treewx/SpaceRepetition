@@ -2091,19 +2091,9 @@ class SpacedRepetitionApp {
         try {
             console.log('🗑️ Deleting character from database:', character);
             
-            // Check if server has a DELETE endpoint, otherwise we may need to implement it
-            const response = await fetch(`${this.apiClient.baseURL}/api/characters/${encodeURIComponent(character)}`, {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            console.log('✅ Character deleted from database');
+            // Use the API client's delete method
+            const result = await this.apiClient.deleteCharacter(character);
+            console.log('✅ Character deleted from database:', result);
 
             // Remove from local data
             this.characters = this.characters.filter(c => c.character !== character);
