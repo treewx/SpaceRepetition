@@ -2774,7 +2774,7 @@ class SpacedRepetitionApp {
                     character,
                     pinyin,
                     meaning: existing.meaning,
-                    imageUrl: existing.image_url,
+                    imageUrl: existing.image_url ? this.base64ToDataUrl(existing.image_url) : null,
                     mnemonicStory: existing.mnemonic_story,
                     examples: existing.examples,
                     hasData: true
