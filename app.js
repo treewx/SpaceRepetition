@@ -29,6 +29,7 @@ class SpacedRepetitionApp {
             placedCharacters: [], // Array of {characterId, x, y, imageUrl, character, pinyin}
             isDragMode: false
         };
+        this.dropZoneInitialized = false;
         
         this.initializePinyinSyllables();
         this.init();
@@ -3214,6 +3215,11 @@ class SpacedRepetitionApp {
     }
 
     setupDropZone() {
+        // Prevent multiple event listener registrations
+        if (this.dropZoneInitialized) {
+            return;
+        }
+        
         const background = document.getElementById('palace-background');
         
         background.addEventListener('dragover', (e) => {
@@ -3251,6 +3257,8 @@ class SpacedRepetitionApp {
             await this.renderMemoryPalace();
             await this.saveMemoryPalace();
         });
+        
+        this.dropZoneInitialized = true;
     }
 
     handlePalaceItemDragStart(e) {
