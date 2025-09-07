@@ -23,6 +23,14 @@ class SpacedRepetitionApp {
         this.currentImageSide = null;
         this.tempCardImages = { front: null, back: null };
         
+        // Memory Palace system
+        this.memoryPalace = {
+            backgroundImage: null,
+            placedCharacters: [], // Array of {characterId, x, y, imageUrl, character, pinyin}
+            isDragMode: false
+        };
+        this.loadMemoryPalace();
+        
         this.initializePinyinSyllables();
         this.init();
     }
@@ -1313,6 +1321,13 @@ class SpacedRepetitionApp {
         document.getElementById('cancel-card-image-btn').addEventListener('click', () => this.cancelCardImageGeneration());
         
         // Auto generate events
+        // Memory Palace events
+        document.getElementById('memory-palace-tab').addEventListener('click', () => this.switchTab('memory-palace'));
+        document.getElementById('upload-palace-btn').addEventListener('click', () => this.uploadPalaceImage());
+        document.getElementById('palace-image-input').addEventListener('change', (e) => this.handlePalaceImageUpload(e));
+        document.getElementById('clear-palace-btn').addEventListener('click', () => this.clearMemoryPalace());
+        
+        // Auto Generate events
         document.getElementById('translate-btn').addEventListener('click', () => this.translatePhrase());
         document.getElementById('create-card-from-translation').addEventListener('click', () => this.createCardFromTranslation());
         document.getElementById('save-translation').addEventListener('click', () => this.saveTranslation());
@@ -1335,6 +1350,10 @@ class SpacedRepetitionApp {
             document.getElementById('dictionary-tab').classList.add('active');
             document.getElementById('dictionary-section').classList.add('active');
             this.renderDictionary();
+        } else if (tab === 'memory-palace') {
+            document.getElementById('memory-palace-tab').classList.add('active');
+            document.getElementById('memory-palace-section').classList.add('active');
+            this.initializeMemoryPalace();
         } else if (tab === 'autogenerate') {
             document.getElementById('autogenerate-tab').classList.add('active');
             document.getElementById('autogenerate-section').classList.add('active');
@@ -2969,6 +2988,259 @@ class SpacedRepetitionApp {
         
         console.log('Translation saved:', this.currentTranslation);
         alert('Translation reference saved!');
+    }
+
+    // Memory Palace Methods
+    initializeMemoryPalace() {
+        console.log('🏛️ Initializing Memory Palace');
+        this.renderMemoryPalace();
+        this.renderCharacterPalette();
+    }
+
+    loadMemoryPalace() {
+        try {
+            const saved = localStorage.getItem('memoryPalace');
+            if (saved) {
+                const data = JSON.parse(saved);
+                this.memoryPalace.backgroundImage = data.backgroundImage;
+                this.memoryPalace.placedCharacters = data.placedCharacters || [];
+                console.log('📥 Loaded Memory Palace:', this.memoryPalace);
+            }
+        } catch (error) {
+            console.error('Error loading Memory Palace:', error);
+            this.memoryPalace = {
+                backgroundImage: null,
+                placedCharacters: [],
+                isDragMode: false
+            };
+        }
+    }
+
+    saveMemoryPalace() {
+        try {
+            const data = {
+                backgroundImage: this.memoryPalace.backgroundImage,
+                placedCharacters: this.memoryPalace.placedCharacters
+            };
+            localStorage.setItem('memoryPalace', JSON.stringify(data));
+            console.log('💾 Saved Memory Palace:', data);
+        } catch (error) {
+            console.error('Error saving Memory Palace:', error);
+        }
+    }
+
+    uploadPalaceImage() {
+        document.getElementById('palace-image-input').click();
+    }
+
+    handlePalaceImageUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            this.memoryPalace.backgroundImage = e.target.result;
+            this.renderMemoryPalace();
+            this.saveMemoryPalace();
+        };
+        reader.readAsDataURL(file);
+    }
+
+    renderMemoryPalace() {
+        const emptyState = document.getElementById('palace-empty-state');
+        const workspace = document.getElementById('palace-workspace');
+        const clearBtn = document.getElementById('clear-palace-btn');
+        const placedCount = document.getElementById('placed-items-count');
+
+        if (this.memoryPalace.backgroundImage) {
+            emptyState.classList.add('hidden');
+            workspace.classList.remove('hidden');
+            clearBtn.classList.remove('hidden');
+            
+            const bgImg = document.getElementById('palace-background-img');
+            bgImg.src = this.memoryPalace.backgroundImage;
+            
+            this.renderPlacedCharacters();
+            this.setupDropZone();
+        } else {
+            emptyState.classList.remove('hidden');
+            workspace.classList.add('hidden');
+            clearBtn.classList.add('hidden');
+        }
+        
+        placedCount.textContent = `${this.memoryPalace.placedCharacters.length} characters placed`;
+    }
+
+    renderPlacedCharacters() {
+        const layer = document.getElementById('palace-items-layer');
+        layer.innerHTML = '';
+        
+        this.memoryPalace.placedCharacters.forEach((item, index) => {
+            const element = document.createElement('div');
+            element.className = 'palace-item';
+            element.style.left = `${item.x}%`;
+            element.style.top = `${item.y}%`;
+            element.draggable = true;
+            element.dataset.index = index;
+            
+            element.innerHTML = `
+                <img src="${item.imageUrl}" alt="${item.character}">
+                <div class="character-overlay">${item.character}</div>
+            `;
+            
+            element.addEventListener('dragstart', (e) => this.handlePalaceItemDragStart(e));
+            element.addEventListener('dragend', (e) => this.handlePalaceItemDragEnd(e));
+            
+            layer.appendChild(element);
+        });
+    }
+
+    setupDropZone() {
+        const background = document.getElementById('palace-background');
+        
+        background.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            background.classList.add('drop-zone');
+        });
+        
+        background.addEventListener('dragleave', (e) => {
+            if (!background.contains(e.relatedTarget)) {
+                background.classList.remove('drop-zone');
+            }
+        });
+        
+        background.addEventListener('drop', (e) => {
+            e.preventDefault();
+            background.classList.remove('drop-zone');
+            
+            const rect = background.getBoundingClientRect();
+            const x = ((e.clientX - rect.left) / rect.width) * 100;
+            const y = ((e.clientY - rect.top) / rect.height) * 100;
+            
+            const characterId = e.dataTransfer.getData('characterId');
+            const isExistingItem = e.dataTransfer.getData('isExistingItem') === 'true';
+            const existingIndex = parseInt(e.dataTransfer.getData('existingIndex'));
+            
+            if (isExistingItem) {
+                // Move existing item
+                this.memoryPalace.placedCharacters[existingIndex].x = x;
+                this.memoryPalace.placedCharacters[existingIndex].y = y;
+            } else if (characterId) {
+                // Add new character from palette
+                this.addCharacterToPalace(characterId, x, y);
+            }
+            
+            this.renderMemoryPalace();
+            this.saveMemoryPalace();
+        });
+    }
+
+    handlePalaceItemDragStart(e) {
+        const index = parseInt(e.target.closest('.palace-item').dataset.index);
+        e.dataTransfer.setData('isExistingItem', 'true');
+        e.dataTransfer.setData('existingIndex', index.toString());
+        e.target.style.opacity = '0.5';
+    }
+
+    handlePalaceItemDragEnd(e) {
+        e.target.style.opacity = '1';
+    }
+
+    async renderCharacterPalette() {
+        const container = document.getElementById('palette-characters');
+        container.innerHTML = '';
+        
+        try {
+            // Load characters from database
+            await this.loadCharactersData();
+            
+            const charactersWithImages = Object.values(this.characters).filter(char => 
+                char.imageUrl && char.imageUrl !== ''
+            );
+            
+            charactersWithImages.forEach(character => {
+                const element = document.createElement('div');
+                element.className = 'palette-character';
+                element.draggable = true;
+                element.dataset.characterId = character.character;
+                
+                // Check if already placed
+                const isPlaced = this.memoryPalace.placedCharacters.some(item => 
+                    item.characterId === character.character
+                );
+                if (isPlaced) element.classList.add('placed');
+                
+                element.innerHTML = `
+                    <div class="palette-character-image">
+                        <img src="${character.imageUrl}" alt="${character.character}">
+                    </div>
+                    <div class="palette-character-text">${character.character}</div>
+                    <div class="palette-character-pinyin">${character.pinyin || ''}</div>
+                `;
+                
+                element.addEventListener('dragstart', (e) => this.handlePaletteDragStart(e));
+                element.addEventListener('dragend', (e) => this.handlePaletteDragEnd(e));
+                
+                container.appendChild(element);
+            });
+            
+        } catch (error) {
+            console.error('Error rendering character palette:', error);
+            container.innerHTML = '<p>Error loading characters. Please check your dictionary.</p>';
+        }
+    }
+
+    handlePaletteDragStart(e) {
+        const characterId = e.target.dataset.characterId;
+        e.dataTransfer.setData('characterId', characterId);
+        e.dataTransfer.setData('isExistingItem', 'false');
+        e.target.classList.add('dragging');
+    }
+
+    handlePaletteDragEnd(e) {
+        e.target.classList.remove('dragging');
+    }
+
+    addCharacterToPalace(characterId, x, y) {
+        // Check if already placed
+        const existing = this.memoryPalace.placedCharacters.find(item => 
+            item.characterId === characterId
+        );
+        if (existing) {
+            existing.x = x;
+            existing.y = y;
+            return;
+        }
+        
+        // Find character data
+        const character = this.characters[characterId];
+        if (!character || !character.imageUrl) {
+            console.warn('Character not found or no image:', characterId);
+            return;
+        }
+        
+        // Add to palace
+        this.memoryPalace.placedCharacters.push({
+            characterId: characterId,
+            character: character.character,
+            pinyin: character.pinyin || '',
+            imageUrl: character.imageUrl,
+            x: x,
+            y: y
+        });
+    }
+
+    clearMemoryPalace() {
+        if (confirm('Are you sure you want to clear your Memory Palace? This will remove the background image and all placed characters.')) {
+            this.memoryPalace = {
+                backgroundImage: null,
+                placedCharacters: [],
+                isDragMode: false
+            };
+            this.renderMemoryPalace();
+            this.renderCharacterPalette();
+            this.saveMemoryPalace();
+        }
     }
 }
 

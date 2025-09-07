@@ -14,6 +14,7 @@
                 <button id="manage-tab" class="tab-btn active">Manage Cards</button>
                 <button id="review-tab" class="tab-btn">Review</button>
                 <button id="dictionary-tab" class="tab-btn">Dictionary</button>
+                <button id="memory-palace-tab" class="tab-btn">Memory Palace</button>
                 <button id="autogenerate-tab" class="tab-btn">Auto Generate</button>
             </nav>
         </header>
@@ -96,6 +97,51 @@
                     </div>
                 </div>
                 <div id="character-grid" class="character-grid"></div>
+            </section>
+
+            <!-- Memory Palace Section -->
+            <section id="memory-palace-section" class="section">
+                <div class="memory-palace-header">
+                    <h2>🏛️ Memory Palace</h2>
+                    <p>Upload a room image and place your dictionary characters in specific locations to enhance spatial memory.</p>
+                </div>
+                
+                <div class="memory-palace-controls">
+                    <div class="palace-controls-left">
+                        <input type="file" id="palace-image-input" accept="image/*" style="display: none;">
+                        <button id="upload-palace-btn" class="btn primary">📷 Upload Room Image</button>
+                        <button id="clear-palace-btn" class="btn secondary hidden">🗑️ Clear Palace</button>
+                    </div>
+                    <div class="palace-controls-right">
+                        <span id="placed-items-count">0 characters placed</span>
+                    </div>
+                </div>
+
+                <div id="memory-palace-container" class="memory-palace-container">
+                    <div id="palace-empty-state" class="palace-empty-state">
+                        <div class="empty-state-content">
+                            <h3>📍 Create Your Memory Palace</h3>
+                            <p>Upload an image of a room, house, or any familiar place</p>
+                            <p>Then drag character images from your dictionary below to place them in the room</p>
+                            <button class="btn primary" onclick="document.getElementById('palace-image-input').click()">
+                                📷 Upload Room Image
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="palace-workspace" class="palace-workspace hidden">
+                        <div id="palace-background" class="palace-background">
+                            <img id="palace-background-img" src="" alt="Memory Palace Background">
+                            <div id="palace-items-layer" class="palace-items-layer"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="character-palette" class="character-palette">
+                    <h3>📚 Character Palette</h3>
+                    <p>Drag characters from below onto your memory palace:</p>
+                    <div id="palette-characters" class="palette-characters"></div>
+                </div>
             </section>
 
             <!-- Auto Generate Section -->
