@@ -2220,11 +2220,12 @@ class SpacedRepetitionApp {
 
         try {
             // Prepare character data for database with the image URL (convert to base64 like cards)
+            // Server expects camelCase field names
             const characterDataToSave = {
                 ...this.currentCharacterData,
-                image_url: this.dataUrlToBase64(this.tempCharacterImageUrl),
-                image_prompt: document.getElementById('character-image-prompt').value.trim(),
-                mnemonic_story: document.getElementById('character-mnemonic-story').value.trim()
+                imageUrl: this.dataUrlToBase64(this.tempCharacterImageUrl),
+                imagePrompt: document.getElementById('character-image-prompt').value.trim(),
+                mnemonicStory: document.getElementById('character-mnemonic-story').value.trim()
             };
 
             console.log('Saving character data to database:', characterDataToSave);
@@ -2284,9 +2285,10 @@ class SpacedRepetitionApp {
             console.log('Removing character image from database...');
             
             // Prepare character data without the image
+            // Server expects camelCase field names
             const characterDataToSave = {
                 ...this.currentCharacterData,
-                image_url: null
+                imageUrl: null
             };
 
             // Update character in database
