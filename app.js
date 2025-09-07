@@ -2991,10 +2991,10 @@ class SpacedRepetitionApp {
     }
 
     // Memory Palace Methods
-    initializeMemoryPalace() {
+    async initializeMemoryPalace() {
         console.log('🏛️ Initializing Memory Palace');
-        this.renderMemoryPalace();
-        this.renderCharacterPalette();
+        await this.renderMemoryPalace();
+        await this.renderCharacterPalette();
     }
 
     loadMemoryPalace() {
@@ -3018,14 +3018,44 @@ class SpacedRepetitionApp {
 
     saveMemoryPalace() {
         try {
+            // Don't store images in localStorage due to quota limits
+            // Only store character positions and references
             const data = {
-                backgroundImage: this.memoryPalace.backgroundImage,
-                placedCharacters: this.memoryPalace.placedCharacters
+                backgroundImage: this.memoryPalace.backgroundImage, // Keep background image for now
+                placedCharacters: this.memoryPalace.placedCharacters.map(item => ({
+                    characterId: item.characterId,
+                    character: item.character,
+                    pinyin: item.pinyin,
+                    x: item.x,
+                    y: item.y
+                    // Don't store imageUrl - we'll reload it from database
+                }))
             };
             localStorage.setItem('memoryPalace', JSON.stringify(data));
             console.log('💾 Saved Memory Palace:', data);
         } catch (error) {
             console.error('Error saving Memory Palace:', error);
+            // If still quota exceeded, try without background image
+            if (error.name === 'QuotaExceededError') {
+                try {
+                    const minimalData = {
+                        backgroundImage: null,
+                        placedCharacters: this.memoryPalace.placedCharacters.map(item => ({
+                            characterId: item.characterId,
+                            character: item.character,
+                            pinyin: item.pinyin,
+                            x: item.x,
+                            y: item.y
+                        }))
+                    };
+                    localStorage.setItem('memoryPalace', JSON.stringify(minimalData));
+                    console.log('💾 Saved Memory Palace (without background):', minimalData);
+                    alert('Storage full! Background image not saved. Character positions saved successfully.');
+                } catch (secondError) {
+                    console.error('Failed to save Memory Palace even without background:', secondError);
+                    alert('Storage full! Unable to save Memory Palace. Please free up some space.');
+                }
+            }
         }
     }
 
@@ -3038,15 +3068,15 @@ class SpacedRepetitionApp {
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
             this.memoryPalace.backgroundImage = e.target.result;
-            this.renderMemoryPalace();
+            await this.renderMemoryPalace();
             this.saveMemoryPalace();
         };
         reader.readAsDataURL(file);
     }
 
-    renderMemoryPalace() {
+    async renderMemoryPalace() {
         const emptyState = document.getElementById('palace-empty-state');
         const workspace = document.getElementById('palace-workspace');
         const clearBtn = document.getElementById('clear-palace-btn');
@@ -3060,7 +3090,7 @@ class SpacedRepetitionApp {
             const bgImg = document.getElementById('palace-background-img');
             bgImg.src = this.memoryPalace.backgroundImage;
             
-            this.renderPlacedCharacters();
+            await this.renderPlacedCharacters();
             this.setupDropZone();
         } else {
             emptyState.classList.remove('hidden');
@@ -3071,11 +3101,27 @@ class SpacedRepetitionApp {
         placedCount.textContent = `${this.memoryPalace.placedCharacters.length} characters placed`;
     }
 
-    renderPlacedCharacters() {
+    async renderPlacedCharacters() {
         const layer = document.getElementById('palace-items-layer');
         layer.innerHTML = '';
         
+        // Ensure characters are loaded for image URLs
+        if (this.characters.length === 0) {
+            await this.loadCharacters();
+        }
+        
         this.memoryPalace.placedCharacters.forEach((item, index) => {
+            // Get the latest image URL from the database
+            let imageUrl = item.imageUrl;
+            if (!imageUrl) {
+                const character = this.characters.find(char => char.character === item.characterId);
+                imageUrl = character?.image_url || '';
+                // Update the stored item with current image URL
+                if (imageUrl) {
+                    item.imageUrl = imageUrl;
+                }
+            }
+            
             const element = document.createElement('div');
             element.className = 'palace-item';
             element.style.left = `${item.x}%`;
@@ -3083,10 +3129,17 @@ class SpacedRepetitionApp {
             element.draggable = true;
             element.dataset.index = index;
             
-            element.innerHTML = `
-                <img src="${item.imageUrl}" alt="${item.character}">
-                <div class="character-overlay">${item.character}</div>
-            `;
+            if (imageUrl) {
+                element.innerHTML = `
+                    <img src="${imageUrl}" alt="${item.character}">
+                    <div class="character-overlay">${item.character}</div>
+                `;
+            } else {
+                element.innerHTML = `
+                    <div style="width: 100%; height: 100%; background: #f0f0f0; display: flex; align-items: center; justify-content: center; color: #666; font-size: 2rem;">${item.character}</div>
+                    <div class="character-overlay">${item.character}</div>
+                `;
+            }
             
             element.addEventListener('dragstart', (e) => this.handlePalaceItemDragStart(e));
             element.addEventListener('dragend', (e) => this.handlePalaceItemDragEnd(e));
@@ -3109,7 +3162,7 @@ class SpacedRepetitionApp {
             }
         });
         
-        background.addEventListener('drop', (e) => {
+        background.addEventListener('drop', async (e) => {
             e.preventDefault();
             background.classList.remove('drop-zone');
             
@@ -3130,7 +3183,7 @@ class SpacedRepetitionApp {
                 this.addCharacterToPalace(characterId, x, y);
             }
             
-            this.renderMemoryPalace();
+            await this.renderMemoryPalace();
             this.saveMemoryPalace();
         });
     }
@@ -3151,12 +3204,18 @@ class SpacedRepetitionApp {
         container.innerHTML = '';
         
         try {
-            // Load characters from database
-            await this.loadCharactersData();
+            // Load characters from database using the correct method
+            await this.loadCharacters();
             
-            const charactersWithImages = Object.values(this.characters).filter(char => 
-                char.imageUrl && char.imageUrl !== ''
+            // Filter characters that have images (note: it's image_url, not imageUrl)
+            const charactersWithImages = this.characters.filter(char => 
+                char.image_url && char.image_url !== ''
             );
+            
+            if (charactersWithImages.length === 0) {
+                container.innerHTML = '<p>No characters with images found. Go to the Dictionary tab to create some character mnemonics first.</p>';
+                return;
+            }
             
             charactersWithImages.forEach(character => {
                 const element = document.createElement('div');
@@ -3172,7 +3231,7 @@ class SpacedRepetitionApp {
                 
                 element.innerHTML = `
                     <div class="palette-character-image">
-                        <img src="${character.imageUrl}" alt="${character.character}">
+                        <img src="${character.image_url}" alt="${character.character}">
                     </div>
                     <div class="palette-character-text">${character.character}</div>
                     <div class="palette-character-pinyin">${character.pinyin || ''}</div>
@@ -3212,9 +3271,9 @@ class SpacedRepetitionApp {
             return;
         }
         
-        // Find character data
-        const character = this.characters[characterId];
-        if (!character || !character.imageUrl) {
+        // Find character data (this.characters is an array, not object)
+        const character = this.characters.find(char => char.character === characterId);
+        if (!character || !character.image_url) {
             console.warn('Character not found or no image:', characterId);
             return;
         }
@@ -3224,21 +3283,21 @@ class SpacedRepetitionApp {
             characterId: characterId,
             character: character.character,
             pinyin: character.pinyin || '',
-            imageUrl: character.imageUrl,
+            imageUrl: character.image_url,
             x: x,
             y: y
         });
     }
 
-    clearMemoryPalace() {
+    async clearMemoryPalace() {
         if (confirm('Are you sure you want to clear your Memory Palace? This will remove the background image and all placed characters.')) {
             this.memoryPalace = {
                 backgroundImage: null,
                 placedCharacters: [],
                 isDragMode: false
             };
-            this.renderMemoryPalace();
-            this.renderCharacterPalette();
+            await this.renderMemoryPalace();
+            await this.renderCharacterPalette();
             this.saveMemoryPalace();
         }
     }
