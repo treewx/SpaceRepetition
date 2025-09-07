@@ -306,6 +306,20 @@ app.get('/api/characters/:character', async (req, res) => {
     }
 });
 
+app.delete('/api/characters/:character', async (req, res) => {
+    try {
+        const { character } = req.params;
+        const result = await pool.query('DELETE FROM character_mnemonics WHERE character = $1 RETURNING *', [character]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Character not found' });
+        }
+        res.json({ message: 'Character deleted successfully', character: result.rows[0] });
+    } catch (error) {
+        console.error('Error deleting character:', error);
+        res.status(500).json({ error: 'Failed to delete character' });
+    }
+});
+
 // Serve static files
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));

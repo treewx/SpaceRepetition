@@ -2052,21 +2052,26 @@ class SpacedRepetitionApp {
             const frequencyClass = character.frequency_rank ? `freq-${Math.floor(character.frequency_rank / 100)}` : 'no-freq';
             
             return `
-                <div class="character-card ${hasImage} ${frequencyClass}" onclick="app.openCharacterModal('${character.character}')">
-                    <div class="character-display">
-                        <div class="character-text">${character.character}</div>
-                        <div class="character-pinyin">${character.pinyin}</div>
-                        <div class="character-meaning">${character.meaning}</div>
-                        ${character.frequency_rank ? `<div class="character-rank">#${character.frequency_rank}</div>` : ''}
+                <div class="character-card ${hasImage} ${frequencyClass}">
+                    <div class="character-actions">
+                        <button class="character-delete-btn" onclick="event.stopPropagation(); app.deleteCharacter('${character.character}')" title="Delete character from dictionary">×</button>
                     </div>
-                    ${character.image_url ? 
-                        `<div class="character-image"><img src="${this.base64ToDataUrl(character.image_url)}" alt="${character.character}"></div>` :
-                        '<div class="character-placeholder">No mnemonic</div>'
-                    }
-                    ${character.mnemonic_story ? 
-                        `<div class="character-description">${this.escapeHtml(character.mnemonic_story.substring(0, 100))}${character.mnemonic_story.length > 100 ? '...' : ''}</div>` :
-                        ''
-                    }
+                    <div class="character-content" onclick="app.openCharacterModal('${character.character}')">
+                        <div class="character-display">
+                            <div class="character-text">${character.character}</div>
+                            <div class="character-pinyin">${character.pinyin}</div>
+                            <div class="character-meaning">${character.meaning}</div>
+                            ${character.frequency_rank ? `<div class="character-rank">#${character.frequency_rank}</div>` : ''}
+                        </div>
+                        ${character.image_url ? 
+                            `<div class="character-image"><img src="${this.base64ToDataUrl(character.image_url)}" alt="${character.character}"></div>` :
+                            '<div class="character-placeholder">No mnemonic</div>'
+                        }
+                        ${character.mnemonic_story ? 
+                            `<div class="character-description">${this.escapeHtml(character.mnemonic_story.substring(0, 100))}${character.mnemonic_story.length > 100 ? '...' : ''}</div>` :
+                            ''
+                        }
+                    </div>
                 </div>
             `;
         }).join('');
@@ -2076,6 +2081,45 @@ class SpacedRepetitionApp {
         const total = this.characters.length;
         const completed = this.characters.filter(c => c.image_url).length;
         document.getElementById('character-stats').textContent = `${completed} / ${total} characters complete`;
+    }
+
+    async deleteCharacter(character) {
+        if (!confirm(`Are you sure you want to delete the character "${character}" from the dictionary?\n\nThis will permanently remove the character and all its associated data including images and mnemonic stories.`)) {
+            return;
+        }
+
+        try {
+            console.log('🗑️ Deleting character from database:', character);
+            
+            // Check if server has a DELETE endpoint, otherwise we may need to implement it
+            const response = await fetch(`${this.apiClient.baseURL}/api/characters/${encodeURIComponent(character)}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            console.log('✅ Character deleted from database');
+
+            // Remove from local data
+            this.characters = this.characters.filter(c => c.character !== character);
+            
+            // Refresh the display
+            this.filterCharacters();
+            this.renderCharacterGrid();
+            this.updateCharacterStats();
+            
+            // Show success message
+            alert(`Character "${character}" has been deleted from the dictionary.`);
+            
+        } catch (error) {
+            console.error('❌ Error deleting character:', error);
+            alert(`Failed to delete character: ${error.message}`);
+        }
     }
 
     async openCharacterModal(characterText) {
