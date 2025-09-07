@@ -1326,6 +1326,7 @@ class SpacedRepetitionApp {
         document.getElementById('upload-palace-btn').addEventListener('click', () => this.uploadPalaceImage());
         document.getElementById('palace-image-input').addEventListener('change', (e) => this.handlePalaceImageUpload(e));
         document.getElementById('clear-palace-btn').addEventListener('click', () => this.clearMemoryPalace());
+        document.getElementById('download-palace-btn').addEventListener('click', () => this.downloadMemoryPalaceImage());
         
         // Auto Generate events
         document.getElementById('translate-btn').addEventListener('click', () => this.translatePhrase());
@@ -3146,12 +3147,14 @@ class SpacedRepetitionApp {
         const emptyState = document.getElementById('palace-empty-state');
         const workspace = document.getElementById('palace-workspace');
         const clearBtn = document.getElementById('clear-palace-btn');
+        const downloadBtn = document.getElementById('download-palace-btn');
         const placedCount = document.getElementById('placed-items-count');
 
         if (this.memoryPalace.backgroundImage) {
             emptyState.classList.add('hidden');
             workspace.classList.remove('hidden');
             clearBtn.classList.remove('hidden');
+            downloadBtn.classList.remove('hidden');
             
             const bgImg = document.getElementById('palace-background-img');
             bgImg.src = this.memoryPalace.backgroundImage;
@@ -3162,6 +3165,7 @@ class SpacedRepetitionApp {
             emptyState.classList.remove('hidden');
             workspace.classList.add('hidden');
             clearBtn.classList.add('hidden');
+            downloadBtn.classList.add('hidden');
         }
         
         placedCount.textContent = `${this.memoryPalace.placedCharacters.length} characters placed`;
@@ -3375,6 +3379,102 @@ class SpacedRepetitionApp {
             await this.renderMemoryPalace();
             await this.renderCharacterPalette();
             await this.saveMemoryPalace();
+        }
+    }
+
+    async downloadMemoryPalaceImage() {
+        if (!this.memoryPalace.backgroundImage) {
+            alert('No Memory Palace background image to download.');
+            return;
+        }
+
+        try {
+            // Create a canvas for compositing
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            // Load the background image
+            const backgroundImg = new Image();
+            backgroundImg.crossOrigin = 'anonymous';
+            
+            await new Promise((resolve, reject) => {
+                backgroundImg.onload = resolve;
+                backgroundImg.onerror = reject;
+                backgroundImg.src = this.memoryPalace.backgroundImage;
+            });
+
+            // Set canvas size to match background image
+            canvas.width = backgroundImg.naturalWidth;
+            canvas.height = backgroundImg.naturalHeight;
+
+            // Draw background image
+            ctx.drawImage(backgroundImg, 0, 0);
+
+            // Load and draw each character image
+            for (const item of this.memoryPalace.placedCharacters) {
+                try {
+                    // Get character data with image
+                    const character = this.characters.find(char => char.character === item.characterId);
+                    if (!character || !character.image_url) continue;
+
+                    // Load character image
+                    const charImg = new Image();
+                    charImg.crossOrigin = 'anonymous';
+                    
+                    await new Promise((resolve, reject) => {
+                        charImg.onload = resolve;
+                        charImg.onerror = () => resolve(); // Continue even if image fails
+                        charImg.src = this.base64ToDataUrl(character.image_url);
+                    });
+
+                    // Calculate position and size
+                    const x = (item.x / 100) * canvas.width;
+                    const y = (item.y / 100) * canvas.height;
+                    const size = 80; // Character item size in pixels
+                    
+                    // Draw character image as circle (matching CSS)
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(x + size/2, y + size/2, size/2, 0, Math.PI * 2);
+                    ctx.clip();
+                    ctx.drawImage(charImg, x, y, size, size);
+                    ctx.restore();
+
+                    // Draw white border
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(x + size/2, y + size/2, size/2, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    // Draw character text overlay
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    ctx.fillRect(x, y + size - 20, size, 20);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '14px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(item.character, x + size/2, y + size - 6);
+
+                } catch (error) {
+                    console.warn('Failed to draw character:', item.characterId, error);
+                }
+            }
+
+            // Create download link
+            canvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `memory-palace-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.png`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            }, 'image/png');
+
+        } catch (error) {
+            console.error('Failed to download Memory Palace image:', error);
+            alert('Failed to download image. Please try again.');
         }
     }
 
