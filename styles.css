@@ -1493,3 +1493,30 @@ main {
         height: 60px;
     }
 }
+
+/* Character Modal Input Styles */
+.character-input, .pinyin-input, .meaning-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.character-input:focus, .pinyin-input:focus, .meaning-input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.character-input {
+    font-size: 1.2rem;
+    font-weight: bold;
+    text-align: center;
+}
+
+#character-input-group, #pinyin-input-group, #meaning-input-group {
+    display: none; /* Hidden by default, shown only when adding new characters */
+}

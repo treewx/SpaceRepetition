@@ -1299,6 +1299,7 @@ class SpacedRepetitionApp {
         });
 
         // Dictionary events
+        document.getElementById('add-character-btn').addEventListener('click', () => this.openAddCharacterModal());
         document.getElementById('character-search').addEventListener('input', (e) => this.filterCharacters());
         document.getElementById('frequency-filter').addEventListener('change', (e) => this.filterCharacters());
         document.getElementById('completion-filter').addEventListener('change', (e) => this.filterCharacters());
@@ -2171,6 +2172,14 @@ class SpacedRepetitionApp {
         }
         
         
+        // Hide input fields and show display fields when editing existing character
+        document.getElementById('character-input-group').style.display = 'none';
+        document.getElementById('pinyin-input-group').style.display = 'none';
+        document.getElementById('meaning-input-group').style.display = 'none';
+        document.getElementById('current-character').style.display = 'block';
+        document.getElementById('current-pinyin').style.display = 'block';
+        document.getElementById('current-meaning').style.display = 'block';
+        
         document.getElementById('character-modal-title').textContent = `Create Mnemonic for: ${characterText}`;
         document.getElementById('current-character').textContent = characterText;
         document.getElementById('current-pinyin').textContent = this.currentCharacterData.pinyin;
@@ -2215,6 +2224,48 @@ class SpacedRepetitionApp {
         document.getElementById('character-modal').classList.add('active');
     }
 
+    openAddCharacterModal() {
+        console.log('🆕 Opening modal to add new character');
+        
+        // Reset the modal for adding a new character
+        this.currentCharacter = null;
+        this.currentCharacterData = null;
+        
+        // Show input fields and hide display fields
+        document.getElementById('character-input-group').style.display = 'block';
+        document.getElementById('pinyin-input-group').style.display = 'block';
+        document.getElementById('meaning-input-group').style.display = 'block';
+        document.getElementById('current-character').style.display = 'none';
+        document.getElementById('current-pinyin').style.display = 'none';
+        document.getElementById('current-meaning').style.display = 'none';
+        
+        // Clear input fields
+        document.getElementById('new-character-input').value = '';
+        document.getElementById('new-pinyin-input').value = '';
+        document.getElementById('new-meaning-input').value = '';
+        document.getElementById('character-mnemonic-story').value = '';
+        document.getElementById('character-image-prompt').value = '';
+        document.getElementById('character-gemini-api-key').value = this.geminiApiKey || '';
+        
+        // Update modal title
+        document.getElementById('character-modal-title').textContent = 'Add New Character';
+        
+        // Clear image display
+        const currentImage = document.getElementById('current-character-image');
+        currentImage.innerHTML = '<div class="no-image-placeholder">No mnemonic image yet</div>';
+        
+        // Show relevant buttons
+        document.getElementById('generate-character-image-btn').classList.remove('hidden');
+        document.getElementById('save-character-btn').classList.add('hidden');
+        document.getElementById('remove-character-image-btn').classList.add('hidden');
+        document.getElementById('character-image-preview').classList.add('hidden');
+        
+        // Clear examples section
+        document.getElementById('character-examples').style.display = 'none';
+        
+        document.getElementById('character-modal').classList.add('active');
+    }
+
     closeCharacterModal() {
         document.getElementById('character-modal').classList.remove('active');
         this.currentCharacter = null;
@@ -2246,8 +2297,25 @@ class SpacedRepetitionApp {
         generateBtn.disabled = true;
 
         try {
-            const characterText = this.currentCharacterData.character;
-            const enhancedPrompt = `Create a memorable mnemonic image for the Chinese character "${characterText}" (meaning: ${this.currentCharacterData.meaning}). ${prompt}. Make it vivid, clear, and easy to remember for language learning.`;
+            // Get character data from either current data or input fields
+            let characterText, characterMeaning;
+            if (this.currentCharacterData) {
+                characterText = this.currentCharacterData.character;
+                characterMeaning = this.currentCharacterData.meaning;
+            } else {
+                // For new characters, get from input fields
+                characterText = document.getElementById('new-character-input').value.trim();
+                characterMeaning = document.getElementById('new-meaning-input').value.trim();
+                
+                if (!characterText) {
+                    alert('Please enter a Chinese character first.');
+                    generateBtn.textContent = 'Generate Mnemonic Image';
+                    generateBtn.disabled = false;
+                    return;
+                }
+            }
+            
+            const enhancedPrompt = `Create a memorable mnemonic image for the Chinese character "${characterText}" (meaning: ${characterMeaning}). ${prompt}. Make it vivid, clear, and easy to remember for language learning.`;
             const imageUrl = await this.generateImageWithGemini(enhancedPrompt, apiKey);
             
             if (imageUrl) {
@@ -2268,12 +2336,32 @@ class SpacedRepetitionApp {
     }
 
     async saveCharacterMnemonic() {
-        if (!this.tempCharacterImageUrl) {
-            alert('No image to save. Please generate an image first.');
-            return;
+        console.log('Saving character mnemonic to database...');
+        
+        // If this is a new character, create character data from input fields
+        if (!this.currentCharacterData) {
+            const character = document.getElementById('new-character-input').value.trim();
+            const pinyin = document.getElementById('new-pinyin-input').value.trim();
+            const meaning = document.getElementById('new-meaning-input').value.trim();
+            
+            if (!character) {
+                alert('Please enter a Chinese character.');
+                return;
+            }
+            
+            this.currentCharacterData = {
+                character: character,
+                pinyin: pinyin,
+                meaning: meaning,
+                image_url: null,
+                image_prompt: '',
+                mnemonic_story: '',
+                examples: []
+            };
+            
+            this.currentCharacter = character;
         }
 
-        console.log('Saving character mnemonic to database...');
         console.log('Current character data:', this.currentCharacterData);
 
         try {
@@ -2281,10 +2369,14 @@ class SpacedRepetitionApp {
             // Server expects camelCase field names
             const characterDataToSave = {
                 ...this.currentCharacterData,
-                imageUrl: this.dataUrlToBase64(this.tempCharacterImageUrl),
                 imagePrompt: document.getElementById('character-image-prompt').value.trim(),
                 mnemonicStory: document.getElementById('character-mnemonic-story').value.trim()
             };
+            
+            // Only add image if one was generated
+            if (this.tempCharacterImageUrl) {
+                characterDataToSave.imageUrl = this.dataUrlToBase64(this.tempCharacterImageUrl);
+            }
 
             console.log('Saving character data to database:', characterDataToSave);
 

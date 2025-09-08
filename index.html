@@ -79,6 +79,7 @@
                 </div>
                 <div class="dictionary-controls">
                     <div class="search-controls">
+                        <button id="add-character-btn" class="btn primary">+ Add Character</button>
                         <input type="text" id="character-search" placeholder="Search characters..." class="search-input">
                         <select id="frequency-filter" class="category-select">
                             <option value="all">All Characters</option>
@@ -350,6 +351,18 @@
             <div class="modal-body">
                 <div class="character-info">
                     <div class="character-display">
+                        <div class="form-group" id="character-input-group">
+                            <label for="new-character-input">Chinese Character:</label>
+                            <input type="text" id="new-character-input" placeholder="Enter Chinese character (e.g., 我)" maxlength="3" class="character-input">
+                        </div>
+                        <div class="form-group" id="pinyin-input-group">
+                            <label for="new-pinyin-input">Pinyin:</label>
+                            <input type="text" id="new-pinyin-input" placeholder="Enter pinyin (e.g., wǒ)" class="pinyin-input">
+                        </div>
+                        <div class="form-group" id="meaning-input-group">
+                            <label for="new-meaning-input">Meaning:</label>
+                            <input type="text" id="new-meaning-input" placeholder="Enter English meaning (e.g., I, me)" class="meaning-input">
+                        </div>
                         <div class="character-text" id="current-character">我</div>
                         <div class="character-pinyin" id="current-pinyin">wǒ</div>
                         <div class="character-meaning" id="current-meaning">I, me</div>
