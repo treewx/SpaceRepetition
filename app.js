@@ -2866,7 +2866,56 @@ class SpacedRepetitionApp {
     }
 
     async convertToPinyin(chineseText) {
-        // Expanded pinyin mapping - in production use a proper library
+        // Use Google Gemini API to get accurate pinyin
+        try {
+            const apiKey = this.geminiApiKey || localStorage.getItem('geminiApiKey');
+            if (!apiKey) {
+                console.warn('No Gemini API key available, using fallback pinyin mapping');
+                return this.convertToPinyinFallback(chineseText);
+            }
+
+            const prompt = `Convert the following Chinese text to pinyin with tone marks. Return only the pinyin, separated by spaces, no Chinese characters: "${chineseText}"`;
+            
+            const response = await fetch(
+                'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-goog-api-key': apiKey
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: prompt
+                            }]
+                        }]
+                    })
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+            
+            if (generatedText) {
+                console.log('✅ Generated pinyin using Gemini API:', generatedText);
+                return generatedText;
+            } else {
+                throw new Error('No pinyin generated');
+            }
+
+        } catch (error) {
+            console.warn('Failed to generate pinyin using API, using fallback:', error);
+            return this.convertToPinyinFallback(chineseText);
+        }
+    }
+
+    convertToPinyinFallback(chineseText) {
+        // Fallback pinyin mapping for when API is unavailable
         const pinyinMap = {
             '你': 'nǐ', '好': 'hǎo', '谢': 'xiè', '早': 'zǎo', '上': 'shàng',
             '吗': 'ma', '再': 'zài', '见': 'jiàn', '请': 'qǐng', 
@@ -2883,7 +2932,7 @@ class SpacedRepetitionApp {
             '后': 'hòu', '自': 'zì', '以': 'yǐ', '会': 'huì', '家': 'jiā',
             '可': 'kě', '下': 'xià', '而': 'ér', '过': 'guò', '天': 'tiān',
             '去': 'qù', '能': 'néng', '对': 'duì', '小': 'xiǎo', '多': 'duō',
-            '食': 'shí', '物': 'wù', '喝': 'hē'
+            '食': 'shí', '物': 'wù', '喝': 'hē', '美': 'měi', '么': 'me', '样': 'yàng'
         };
         
         const convertedChars = chineseText.split('').map(char => {
