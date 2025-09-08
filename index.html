@@ -224,6 +224,7 @@
                             </div>
                             <div class="image-controls">
                                 <button type="button" id="add-front-image-btn" class="btn secondary small">+ Add AI Image</button>
+                                <button type="button" id="upload-front-image-btn" class="btn secondary small">+ Upload Image</button>
                                 <button type="button" id="remove-front-image-btn" class="btn secondary small hidden">Remove</button>
                             </div>
                         </div>
@@ -234,11 +235,16 @@
                             </div>
                             <div class="image-controls">
                                 <button type="button" id="add-back-image-btn" class="btn secondary small">+ Add AI Image</button>
+                                <button type="button" id="upload-back-image-btn" class="btn secondary small">+ Upload Image</button>
                                 <button type="button" id="remove-back-image-btn" class="btn secondary small hidden">Remove</button>
                             </div>
                         </div>
                     </div>
                 </div>
+
+                <!-- Hidden file inputs for image uploads -->
+                <input type="file" id="front-image-upload" accept="image/*" style="display: none;">
+                <input type="file" id="back-image-upload" accept="image/*" style="display: none;">
 
                 <!-- Image Generation Form (initially hidden) -->
                 <div id="card-image-generation" class="image-generation-section hidden">

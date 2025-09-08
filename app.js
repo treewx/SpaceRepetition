@@ -1314,11 +1314,15 @@ class SpacedRepetitionApp {
         // Card image generation events
         document.getElementById('add-front-image-btn').addEventListener('click', () => this.openCardImageGeneration('front'));
         document.getElementById('add-back-image-btn').addEventListener('click', () => this.openCardImageGeneration('back'));
+        document.getElementById('upload-front-image-btn').addEventListener('click', () => this.openCardImageUpload('front'));
+        document.getElementById('upload-back-image-btn').addEventListener('click', () => this.openCardImageUpload('back'));
         document.getElementById('remove-front-image-btn').addEventListener('click', () => this.removeCardImage('front'));
         document.getElementById('remove-back-image-btn').addEventListener('click', () => this.removeCardImage('back'));
         document.getElementById('generate-card-image-btn').addEventListener('click', () => this.generateCardImage());
         document.getElementById('save-card-image-btn').addEventListener('click', () => this.saveCardImage());
         document.getElementById('cancel-card-image-btn').addEventListener('click', () => this.cancelCardImageGeneration());
+        document.getElementById('front-image-upload').addEventListener('change', (e) => this.handleCardImageUpload(e, 'front'));
+        document.getElementById('back-image-upload').addEventListener('change', (e) => this.handleCardImageUpload(e, 'back'));
         
         // Auto generate events
         // Memory Palace events
@@ -2657,6 +2661,94 @@ class SpacedRepetitionApp {
         this.updateCardImagePreviews();
     }
 
+    openCardImageUpload(side) {
+        this.currentImageSide = side;
+        const fileInput = document.getElementById(`${side}-image-upload`);
+        fileInput.click();
+    }
+
+    async handleCardImageUpload(event, side) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            alert('Please select a valid image file.');
+            return;
+        }
+
+        try {
+            // Convert file to blob URL for preview
+            const blobUrl = URL.createObjectURL(file);
+            
+            // Store in database and get the stored blob URL
+            const storedBlobUrl = await this.storeImageInDatabase(file);
+            
+            // Update temp image with stored blob URL
+            this.tempCardImages[side] = storedBlobUrl;
+            this.updateCardImagePreviews();
+            
+            // Clean up the temporary blob URL
+            URL.revokeObjectURL(blobUrl);
+            
+        } catch (error) {
+            console.error('Error uploading image:', error);
+            alert('Failed to upload image. Please try again.');
+        }
+        
+        // Reset file input
+        event.target.value = '';
+    }
+
+    async storeImageInDatabase(file) {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open('MemoryPalaceDB', 1);
+            
+            request.onerror = () => reject(request.error);
+            
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+                if (!db.objectStoreNames.contains('cardImages')) {
+                    const store = db.createObjectStore('cardImages', { keyPath: 'id' });
+                }
+            };
+            
+            request.onsuccess = (event) => {
+                const db = event.target.result;
+                const reader = new FileReader();
+                
+                reader.onload = (e) => {
+                    const arrayBuffer = e.target.result;
+                    const imageId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+                    
+                    const transaction = db.transaction(['cardImages'], 'readwrite');
+                    const store = transaction.objectStore('cardImages');
+                    
+                    const imageData = {
+                        id: imageId,
+                        data: arrayBuffer,
+                        type: file.type,
+                        name: file.name,
+                        timestamp: Date.now()
+                    };
+                    
+                    const request = store.add(imageData);
+                    
+                    request.onsuccess = () => {
+                        // Create blob URL from stored data
+                        const blob = new Blob([arrayBuffer], { type: file.type });
+                        const blobUrl = URL.createObjectURL(blob);
+                        resolve(blobUrl);
+                    };
+                    
+                    request.onerror = () => reject(request.error);
+                };
+                
+                reader.onerror = () => reject(reader.error);
+                reader.readAsArrayBuffer(file);
+            };
+        });
+    }
+
     // Utility Methods
     updateUI() {
         this.populateAllCategorySelects();
@@ -3430,7 +3522,7 @@ class SpacedRepetitionApp {
                     // Calculate position and size
                     const x = (item.x / 100) * canvas.width;
                     const y = (item.y / 100) * canvas.height;
-                    const size = 160; // Character item size in pixels
+                    const size = 320; // Character item size in pixels
                     
                     // Draw character image as circle (matching CSS)
                     ctx.save();
@@ -3449,11 +3541,11 @@ class SpacedRepetitionApp {
 
                     // Draw character text overlay
                     ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-                    ctx.fillRect(x, y + size - 40, size, 40);
+                    ctx.fillRect(x, y + size - 80, size, 80);
                     ctx.fillStyle = '#ffffff';
-                    ctx.font = '28px Arial';
+                    ctx.font = '56px Arial';
                     ctx.textAlign = 'center';
-                    ctx.fillText(item.character, x + size/2, y + size - 10);
+                    ctx.fillText(item.character, x + size/2, y + size - 20);
 
                 } catch (error) {
                     console.warn('Failed to draw character:', item.characterId, error);
