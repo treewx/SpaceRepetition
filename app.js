@@ -2948,37 +2948,60 @@ class SpacedRepetitionApp {
     }
 
     async generateChinglish(chineseText) {
-        // Word-by-word English translation mapping
-        const chinglishMap = {
-            '你': 'you', '好': 'good', '谢': 'thank', '早': 'early', '上': 'up/above',
-            '吗': '(question)', '再': 'again', '见': 'see', '请': 'please', 
-            '不': 'not', '意': 'meaning', '思': 'think', '我': 'I/me', '爱': 'love',
-            '猫': 'cat', '狗': 'dog', '水': 'water',
-            '正': 'correct', '在': 'at/in', '吃': 'eat', '东': 'east', '西': 'west/thing',
-            '是': 'is/am/are', '的': '(possessive)', '一': 'one', '了': '(completed)', '人': 'person',
-            '有': 'have', '他': 'he/him', '这': 'this', '个': '(classifier)', '们': '(plural)',
-            '来': 'come', '到': 'arrive', '时': 'time', '大': 'big', '地': 'ground/earth',
-            '为': 'for/as', '子': 'child/son', '中': 'middle/center', '国': 'country', '年': 'year',
-            '着': '(ongoing)', '就': 'then/just', '那': 'that', '和': 'and', '要': 'want/need',
-            '她': 'she/her', '出': 'out/exit', '也': 'also', '得': 'must/get', '里': 'inside',
-            '后': 'after/behind', '自': 'self', '以': 'with/by', '会': 'can/meeting', '家': 'home/family',
-            '可': 'can/may', '下': 'down/below', '而': 'and/but', '过': 'pass/through', '天': 'day/sky',
-            '去': 'go', '能': 'able/can', '对': 'correct/toward', '小': 'small', '多': 'many/much',
-            '食': 'food', '物': 'thing/object', '喝': 'drink',
-            '美': 'beautiful', '么': '(what)', '样': 'appearance/way',
-            '很': 'very', '高': 'tall/high', '兴': 'interest/mood'
-        };
-        
-        const convertedWords = chineseText.split('').map(char => {
-            if (chinglishMap[char]) {
-                return chinglishMap[char];
+        try {
+            const apiKey = await this.getGeminiApiKey();
+            if (!apiKey) {
+                throw new Error('Google Gemini API key not found');
             }
-            // Return placeholder for unmapped characters
-            console.warn(`Chinglish mapping missing for character: ${char}`);
-            return `[${char}]`; // Keep Chinese character in chinglish for context
-        });
-        
-        return convertedWords.join(' ');
+
+            const prompt = `Convert this Chinese text to "Chinglish" - a word-by-word English translation that maintains Chinese word order. For each Chinese character or word, provide the most literal English equivalent. Use parentheses for grammatical particles like (possessive) for 的, (question) for 吗, etc.
+
+Chinese text: "${chineseText}"
+
+Example:
+Chinese: 我爱你
+Chinglish: I love you
+
+Chinese: 你好吗
+Chinglish: you good (question)
+
+Chinese: 我的猫
+Chinglish: I (possessive) cat
+
+Please provide only the Chinglish translation, no explanations:`;
+
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{
+                            text: prompt
+                        }]
+                    }],
+                    generationConfig: {
+                        temperature: 0.1,
+                        maxOutputTokens: 100
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const chinglish = data.candidates[0].content.parts[0].text.trim();
+            
+            console.log('🔤 Generated Chinglish:', chinglish);
+            return chinglish;
+        } catch (error) {
+            console.error('Error generating Chinglish:', error);
+            // Fallback to simple character-by-character approach
+            return chineseText.split('').map(char => `[${char}]`).join(' ');
+        }
     }
 
     async extractCharacters(chineseText, pinyinText) {
