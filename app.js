@@ -2965,7 +2965,8 @@ class SpacedRepetitionApp {
             '可': 'can/may', '下': 'down/below', '而': 'and/but', '过': 'pass/through', '天': 'day/sky',
             '去': 'go', '能': 'able/can', '对': 'correct/toward', '小': 'small', '多': 'many/much',
             '食': 'food', '物': 'thing/object', '喝': 'drink',
-            '美': 'beautiful', '么': '(what)', '样': 'appearance/way'
+            '美': 'beautiful', '么': '(what)', '样': 'appearance/way',
+            '很': 'very', '高': 'tall/high', '兴': 'interest/mood'
         };
         
         const convertedWords = chineseText.split('').map(char => {
