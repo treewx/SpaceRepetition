@@ -3430,7 +3430,7 @@ class SpacedRepetitionApp {
                     // Calculate position and size
                     const x = (item.x / 100) * canvas.width;
                     const y = (item.y / 100) * canvas.height;
-                    const size = 80; // Character item size in pixels
+                    const size = 160; // Character item size in pixels
                     
                     // Draw character image as circle (matching CSS)
                     ctx.save();
@@ -3449,11 +3449,11 @@ class SpacedRepetitionApp {
 
                     // Draw character text overlay
                     ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-                    ctx.fillRect(x, y + size - 20, size, 20);
+                    ctx.fillRect(x, y + size - 40, size, 40);
                     ctx.fillStyle = '#ffffff';
-                    ctx.font = '14px Arial';
+                    ctx.font = '28px Arial';
                     ctx.textAlign = 'center';
-                    ctx.fillText(item.character, x + size/2, y + size - 6);
+                    ctx.fillText(item.character, x + size/2, y + size - 10);
 
                 } catch (error) {
                     console.warn('Failed to draw character:', item.characterId, error);
