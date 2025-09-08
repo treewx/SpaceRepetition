@@ -2798,6 +2798,9 @@ class SpacedRepetitionApp {
             // Convert Chinese to pinyin
             const pinyin = await this.convertToPinyin(translation.chinese);
             
+            // Generate chinglish (word-by-word translation)
+            const chinglish = await this.generateChinglish(translation.chinese);
+            
             // Extract characters and find mnemonics
             const characterData = await this.extractCharacters(translation.chinese, pinyin);
             
@@ -2805,6 +2808,7 @@ class SpacedRepetitionApp {
             this.displayTranslationResults({
                 english: englishPhrase,
                 chinese: translation.chinese,
+                chinglish: chinglish,
                 pinyin: pinyin,
                 characters: characterData
             });
@@ -2886,12 +2890,45 @@ class SpacedRepetitionApp {
             if (pinyinMap[char]) {
                 return pinyinMap[char];
             }
-            // If character not found, try to indicate it's missing
+            // If character not found, return placeholder without Chinese character
             console.warn(`Pinyin mapping missing for character: ${char}`);
-            return `[${char}]`; // Wrap unmapped characters in brackets
+            return `[?]`; // Use generic placeholder instead of Chinese character
         });
         
         return convertedChars.join(' ');
+    }
+
+    async generateChinglish(chineseText) {
+        // Word-by-word English translation mapping
+        const chinglishMap = {
+            '你': 'you', '好': 'good', '谢': 'thank', '早': 'early', '上': 'up/above',
+            '吗': '(question)', '再': 'again', '见': 'see', '请': 'please', 
+            '不': 'not', '意': 'meaning', '思': 'think', '我': 'I/me', '爱': 'love',
+            '猫': 'cat', '狗': 'dog', '水': 'water',
+            '正': 'correct', '在': 'at/in', '吃': 'eat', '东': 'east', '西': 'west/thing',
+            '是': 'is/am/are', '的': '(possessive)', '一': 'one', '了': '(completed)', '人': 'person',
+            '有': 'have', '他': 'he/him', '这': 'this', '个': '(classifier)', '们': '(plural)',
+            '来': 'come', '到': 'arrive', '时': 'time', '大': 'big', '地': 'ground/earth',
+            '为': 'for/as', '子': 'child/son', '中': 'middle/center', '国': 'country', '年': 'year',
+            '着': '(ongoing)', '就': 'then/just', '那': 'that', '和': 'and', '要': 'want/need',
+            '她': 'she/her', '出': 'out/exit', '也': 'also', '得': 'must/get', '里': 'inside',
+            '后': 'after/behind', '自': 'self', '以': 'with/by', '会': 'can/meeting', '家': 'home/family',
+            '可': 'can/may', '下': 'down/below', '而': 'and/but', '过': 'pass/through', '天': 'day/sky',
+            '去': 'go', '能': 'able/can', '对': 'correct/toward', '小': 'small', '多': 'many/much',
+            '食': 'food', '物': 'thing/object', '喝': 'drink',
+            '美': 'beautiful', '么': '(what)', '样': 'appearance/way'
+        };
+        
+        const convertedWords = chineseText.split('').map(char => {
+            if (chinglishMap[char]) {
+                return chinglishMap[char];
+            }
+            // Return placeholder for unmapped characters
+            console.warn(`Chinglish mapping missing for character: ${char}`);
+            return `[${char}]`; // Keep Chinese character in chinglish for context
+        });
+        
+        return convertedWords.join(' ');
     }
 
     async extractCharacters(chineseText, pinyinText) {
@@ -2994,6 +3031,7 @@ class SpacedRepetitionApp {
         // Display text results
         document.getElementById('english-text').textContent = results.english;
         document.getElementById('chinese-text').textContent = results.chinese;
+        document.getElementById('chinglish-text').textContent = results.chinglish;
         document.getElementById('pinyin-text').textContent = results.pinyin;
         
         // Display character images
