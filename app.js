@@ -2949,7 +2949,7 @@ class SpacedRepetitionApp {
 
     async generateChinglish(chineseText) {
         try {
-            const apiKey = await this.getGeminiApiKey();
+            const apiKey = this.geminiApiKey || localStorage.getItem('geminiApiKey');
             if (!apiKey) {
                 throw new Error('Google Gemini API key not found');
             }
@@ -2970,10 +2970,11 @@ Chinglish: I (possessive) cat
 
 Please provide only the Chinglish translation, no explanations:`;
 
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+            const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'x-goog-api-key': apiKey
                 },
                 body: JSON.stringify({
                     contents: [{
@@ -2998,8 +2999,10 @@ Please provide only the Chinglish translation, no explanations:`;
             console.log('🔤 Generated Chinglish:', chinglish);
             return chinglish;
         } catch (error) {
-            console.error('Error generating Chinglish:', error);
+            console.error('❌ Error generating Chinglish:', error);
+            console.error('❌ Error details:', error.message);
             // Fallback to simple character-by-character approach
+            console.warn('🔄 Using fallback chinglish method');
             return chineseText.split('').map(char => `[${char}]`).join(' ');
         }
     }
