@@ -2151,6 +2151,7 @@ class SpacedRepetitionApp {
             console.log('⚠️ Character not found in database, creating empty structure');
             // Character not found in database, create empty data structure
             this.currentCharacterData = {
+                id: `char_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                 character: characterText,
                 pinyin: '',
                 meaning: '',
@@ -2456,6 +2457,7 @@ Please provide ONLY the JSON response, no other text:`;
             }
             
             this.currentCharacterData = {
+                id: `char_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                 character: character,
                 pinyin: pinyin,
                 meaning: meaning,
@@ -2475,6 +2477,7 @@ Please provide ONLY the JSON response, no other text:`;
             // Server expects camelCase field names
             const characterDataToSave = {
                 ...this.currentCharacterData,
+                id: this.currentCharacterData.id || `char_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                 imagePrompt: document.getElementById('character-image-prompt').value.trim(),
                 mnemonicStory: document.getElementById('character-mnemonic-story').value.trim()
             };
