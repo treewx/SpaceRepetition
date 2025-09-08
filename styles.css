@@ -1517,6 +1517,32 @@ main {
     text-align: center;
 }
 
-#character-input-group, #pinyin-input-group, #meaning-input-group {
+#english-word-group, #character-input-group, #pinyin-input-group, #meaning-input-group {
     display: none; /* Hidden by default, shown only when adding new characters */
+}
+
+.english-input-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.english-input {
+    flex: 1;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 1rem;
+}
+
+.english-input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+#translate-word-btn {
+    white-space: nowrap;
+    min-width: 120px;
 }

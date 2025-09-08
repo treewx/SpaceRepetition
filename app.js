@@ -1300,6 +1300,7 @@ class SpacedRepetitionApp {
 
         // Dictionary events
         document.getElementById('add-character-btn').addEventListener('click', () => this.openAddCharacterModal());
+        document.getElementById('translate-word-btn').addEventListener('click', () => this.translateWordToCharacter());
         document.getElementById('character-search').addEventListener('input', (e) => this.filterCharacters());
         document.getElementById('frequency-filter').addEventListener('change', (e) => this.filterCharacters());
         document.getElementById('completion-filter').addEventListener('change', (e) => this.filterCharacters());
@@ -2173,6 +2174,7 @@ class SpacedRepetitionApp {
         
         
         // Hide input fields and show display fields when editing existing character
+        document.getElementById('english-word-group').style.display = 'none';
         document.getElementById('character-input-group').style.display = 'none';
         document.getElementById('pinyin-input-group').style.display = 'none';
         document.getElementById('meaning-input-group').style.display = 'none';
@@ -2232,6 +2234,7 @@ class SpacedRepetitionApp {
         this.currentCharacterData = null;
         
         // Show input fields and hide display fields
+        document.getElementById('english-word-group').style.display = 'block';
         document.getElementById('character-input-group').style.display = 'block';
         document.getElementById('pinyin-input-group').style.display = 'block';
         document.getElementById('meaning-input-group').style.display = 'block';
@@ -2240,6 +2243,7 @@ class SpacedRepetitionApp {
         document.getElementById('current-meaning').style.display = 'none';
         
         // Clear input fields
+        document.getElementById('english-word-input').value = '';
         document.getElementById('new-character-input').value = '';
         document.getElementById('new-pinyin-input').value = '';
         document.getElementById('new-meaning-input').value = '';
@@ -2264,6 +2268,108 @@ class SpacedRepetitionApp {
         document.getElementById('character-examples').style.display = 'none';
         
         document.getElementById('character-modal').classList.add('active');
+    }
+
+    async generateCharacterDataFromEnglish(englishWord) {
+        try {
+            const apiKey = this.geminiApiKey || localStorage.getItem('geminiApiKey');
+            if (!apiKey) {
+                throw new Error('Google Gemini API key not found');
+            }
+
+            const prompt = `For the English word "${englishWord}", provide the Chinese translation and generate learning materials in this exact JSON format:
+
+{
+    "chinese": "Chinese characters here",
+    "pinyin": "Pinyin with tone marks",
+    "meaning": "English meaning/definition",
+    "mnemonicStory": "Create a memorable story that relates the PINYIN SOUNDS to the English meaning. Focus on phonetic connections between pinyin and English. For example, if the pinyin contains 'ping', relate it to 'ping pong' or similar English sounds.",
+    "imagePrompt": "Describe a vivid, memorable scene that combines the mnemonic story elements for AI image generation. Make it visual and engaging."
+}
+
+Example for "Apple":
+{
+    "chinese": "苹果",
+    "pinyin": "píngguǒ", 
+    "meaning": "apple (fruit)",
+    "mnemonicStory": "The 'píng' in píngguǒ sounds like 'ping' from ping-pong. Imagine playing ping-pong but the ball is actually a juicy apple bouncing back and forth.",
+    "imagePrompt": "A person playing ping-pong but the ball is a shiny red apple bouncing across a green table tennis table, with apple juice splashing slightly on impact."
+}
+
+Please provide ONLY the JSON response, no other text:`;
+
+            const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-goog-api-key': apiKey
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{
+                            text: prompt
+                        }]
+                    }],
+                    generationConfig: {
+                        temperature: 0.7,
+                        maxOutputTokens: 500
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const responseText = data.candidates[0].content.parts[0].text.trim();
+            
+            console.log('🔤 Generated character data:', responseText);
+            
+            // Parse JSON response
+            const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                const characterData = JSON.parse(jsonMatch[0]);
+                return characterData;
+            } else {
+                throw new Error('Could not parse JSON response from LLM');
+            }
+        } catch (error) {
+            console.error('Error generating character data:', error);
+            throw error;
+        }
+    }
+
+    async translateWordToCharacter() {
+        const englishWord = document.getElementById('english-word-input').value.trim();
+        if (!englishWord) {
+            alert('Please enter an English word first.');
+            return;
+        }
+
+        const translateBtn = document.getElementById('translate-word-btn');
+        const originalText = translateBtn.textContent;
+        translateBtn.textContent = '🔄 Generating...';
+        translateBtn.disabled = true;
+
+        try {
+            const characterData = await this.generateCharacterDataFromEnglish(englishWord);
+            
+            // Populate the form fields
+            document.getElementById('new-character-input').value = characterData.chinese;
+            document.getElementById('new-pinyin-input').value = characterData.pinyin;
+            document.getElementById('new-meaning-input').value = characterData.meaning;
+            document.getElementById('character-mnemonic-story').value = characterData.mnemonicStory;
+            document.getElementById('character-image-prompt').value = characterData.imagePrompt;
+            
+            console.log('✅ Successfully populated character data from English word');
+        } catch (error) {
+            console.error('❌ Error translating word:', error);
+            alert(`Failed to generate character data: ${error.message}`);
+        } finally {
+            translateBtn.textContent = originalText;
+            translateBtn.disabled = false;
+        }
     }
 
     closeCharacterModal() {
