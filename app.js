@@ -2902,14 +2902,17 @@ Please provide ONLY the JSON response, no other text:`;
 
     async storeImageInDatabase(file) {
         return new Promise((resolve, reject) => {
-            const request = indexedDB.open('MemoryPalaceDB', 1);
+            const request = indexedDB.open('MemoryPalaceDB', 2);
             
             request.onerror = () => reject(request.error);
             
             request.onupgradeneeded = (event) => {
                 const db = event.target.result;
                 if (!db.objectStoreNames.contains('cardImages')) {
-                    const store = db.createObjectStore('cardImages', { keyPath: 'id' });
+                    db.createObjectStore('cardImages', { keyPath: 'id' });
+                }
+                if (!db.objectStoreNames.contains('backgrounds')) {
+                    db.createObjectStore('backgrounds', { keyPath: 'id' });
                 }
             };
             
@@ -3465,12 +3468,15 @@ Please provide only the Chinglish translation, no explanations:`;
 
     async saveBackgroundImageToIndexedDB(imageData) {
         return new Promise((resolve, reject) => {
-            const request = indexedDB.open('MemoryPalaceDB', 1);
+            const request = indexedDB.open('MemoryPalaceDB', 2);
             
             request.onerror = () => reject(request.error);
             
             request.onupgradeneeded = (event) => {
                 const db = event.target.result;
+                if (!db.objectStoreNames.contains('cardImages')) {
+                    db.createObjectStore('cardImages', { keyPath: 'id' });
+                }
                 if (!db.objectStoreNames.contains('backgrounds')) {
                     db.createObjectStore('backgrounds', { keyPath: 'id' });
                 }
@@ -3499,7 +3505,7 @@ Please provide only the Chinglish translation, no explanations:`;
 
     async loadBackgroundImageFromIndexedDB() {
         return new Promise((resolve) => {
-            const request = indexedDB.open('MemoryPalaceDB', 1);
+            const request = indexedDB.open('MemoryPalaceDB', 2);
             
             request.onerror = () => {
                 console.log('IndexedDB not available, background image not loaded');
@@ -3887,7 +3893,7 @@ Please provide only the Chinglish translation, no explanations:`;
 
     async clearBackgroundImageFromIndexedDB() {
         return new Promise((resolve) => {
-            const request = indexedDB.open('MemoryPalaceDB', 1);
+            const request = indexedDB.open('MemoryPalaceDB', 2);
             
             request.onerror = () => {
                 console.log('IndexedDB not available, background image clear skipped');
