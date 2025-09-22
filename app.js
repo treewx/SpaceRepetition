@@ -3272,18 +3272,39 @@ Please provide only the Chinglish translation, no explanations:`;
                 let examples = null;
                 let meaning = mapping.englishWord;
 
-                // For single characters, try to fetch from database
-                if (mapping.chineseChars.length === 1) {
-                    try {
-                        const existing = await this.apiClient.getCharacter(mapping.chineseChars);
-                        console.log(`✅ Found existing character data for ${mapping.chineseChars}:`, existing);
-                        hasData = true;
-                        imageUrl = existing.image_url ? this.base64ToDataUrl(existing.image_url) : null;
-                        mnemonicStory = existing.mnemonic_story;
-                        examples = existing.examples;
-                        meaning = existing.meaning || mapping.englishWord;
-                    } catch (error) {
-                        console.log(`❌ No character data found for ${mapping.chineseChars}`);
+                // Try to fetch from database - works for both single and multi-character words
+                try {
+                    const existing = await this.apiClient.getCharacter(mapping.chineseChars);
+                    console.log(`✅ Found existing character/word data for ${mapping.chineseChars}:`, existing);
+                    hasData = true;
+                    imageUrl = existing.image_url ? this.base64ToDataUrl(existing.image_url) : null;
+                    mnemonicStory = existing.mnemonic_story;
+                    examples = existing.examples;
+                    meaning = existing.meaning || mapping.englishWord;
+                } catch (error) {
+                    console.log(`❌ No character/word data found for ${mapping.chineseChars} in dictionary`);
+
+                    // For multi-character words, try to find any character with an image as fallback
+                    if (mapping.chineseChars.length > 1) {
+                        console.log(`🔄 Trying individual characters as fallback for multi-character word: ${mapping.chineseChars}`);
+                        const characters = [...mapping.chineseChars];
+
+                        for (const char of characters) {
+                            try {
+                                const charData = await this.apiClient.getCharacter(char);
+                                if (charData.image_url) {
+                                    console.log(`✅ Found fallback image from character ${char}:`, charData);
+                                    hasData = true;
+                                    imageUrl = this.base64ToDataUrl(charData.image_url);
+                                    mnemonicStory = `Fallback mnemonic from character ${char}: ${charData.mnemonic_story || ''}`;
+                                    examples = charData.examples;
+                                    meaning = `${mapping.englishWord} (using image from ${char})`;
+                                    break; // Use the first character with an image
+                                }
+                            } catch (charError) {
+                                console.log(`❌ No data for individual character ${char}`);
+                            }
+                        }
                     }
                 }
 
