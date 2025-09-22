@@ -2613,6 +2613,50 @@ Please provide ONLY the JSON response, no other text:`;
         }
     }
 
+    async addWordGroupToDictionary(wordIndex) {
+        if (!this.currentTranslation || !this.currentTranslation.characters) {
+            alert('No word data available to add.');
+            return;
+        }
+
+        const wordData = this.currentTranslation.characters[wordIndex];
+        if (!wordData || wordData.character.length !== 1) {
+            alert('Only single characters can be added to the dictionary.');
+            return;
+        }
+
+        console.log('📚 Adding word group character to dictionary:', wordData);
+
+        try {
+            // Create character data for the dictionary
+            const dictionaryCharacter = {
+                id: `char_${wordData.character}_${Date.now()}`,
+                character: wordData.character,
+                pinyin: wordData.pinyin,
+                meaning: wordData.meaning || wordData.englishWord || 'Unknown meaning',
+                imageUrl: null,
+                imagePrompt: `Educational mnemonic image for Chinese character ${wordData.character} (${wordData.pinyin}) meaning "${wordData.englishWord}"`,
+                mnemonicStory: `Character ${wordData.character} pronounced as "${wordData.pinyin}" means "${wordData.englishWord}". Create your own memorable story for this character.`,
+                examples: [`${wordData.character} - (add example sentences with "${wordData.englishWord}")`],
+                frequencyRank: null
+            };
+
+            // Save to database
+            const result = await this.apiClient.saveCharacter(dictionaryCharacter);
+            console.log('✅ Successfully added character to dictionary:', result);
+
+            // Update the UI to show it's now in dictionary
+            this.updateCharacterCardStatus(wordIndex, true);
+
+            // Show success message
+            alert(`✅ Character "${wordData.character}" (${wordData.pinyin}) for "${wordData.englishWord}" added to your dictionary!\n\nYou can now find it in the Dictionary tab where you can add mnemonics and images.`);
+
+        } catch (error) {
+            console.error('❌ Failed to add character to dictionary:', error);
+            alert(`❌ Failed to add character to dictionary: ${error.message}`);
+        }
+    }
+
     updateCharacterCardStatus(characterIndex, inDictionary) {
         // Find the character card and update its status
         const characterCards = document.querySelectorAll('#syllable-images-grid .syllable-card');
@@ -3005,8 +3049,8 @@ Please provide ONLY the JSON response, no other text:`;
             // Generate chinglish (word-by-word translation)
             const chinglish = await this.generateChinglish(translation.chinese);
             
-            // Extract characters and find mnemonics
-            const characterData = await this.extractCharacters(translation.chinese, pinyin);
+            // Extract word groups and find mnemonics
+            const characterData = await this.extractWordGroups(englishPhrase, translation.chinese, pinyin, chinglish);
             
             // Display results
             this.displayTranslationResults({
@@ -3211,28 +3255,159 @@ Please provide only the Chinglish translation, no explanations:`;
         }
     }
 
+    async extractWordGroups(englishPhrase, chineseText, pinyinText, chinglishText) {
+        console.log('🔍 Extracting word groups from:', { englishPhrase, chineseText, pinyinText, chinglishText });
+
+        try {
+            // Use AI to create accurate word alignment
+            const alignment = await this.getWordAlignment(englishPhrase, chineseText, pinyinText);
+
+            const wordGroups = [];
+
+            for (const mapping of alignment) {
+                // Try to get existing data for this character group
+                let hasData = false;
+                let imageUrl = null;
+                let mnemonicStory = null;
+                let examples = null;
+                let meaning = mapping.englishWord;
+
+                // For single characters, try to fetch from database
+                if (mapping.chineseChars.length === 1) {
+                    try {
+                        const existing = await this.apiClient.getCharacter(mapping.chineseChars);
+                        console.log(`✅ Found existing character data for ${mapping.chineseChars}:`, existing);
+                        hasData = true;
+                        imageUrl = existing.image_url ? this.base64ToDataUrl(existing.image_url) : null;
+                        mnemonicStory = existing.mnemonic_story;
+                        examples = existing.examples;
+                        meaning = existing.meaning || mapping.englishWord;
+                    } catch (error) {
+                        console.log(`❌ No character data found for ${mapping.chineseChars}`);
+                    }
+                }
+
+                wordGroups.push({
+                    englishWord: mapping.englishWord,
+                    character: mapping.chineseChars,
+                    pinyin: mapping.pinyin,
+                    meaning: meaning,
+                    imageUrl: imageUrl,
+                    mnemonicStory: mnemonicStory,
+                    examples: examples,
+                    hasData: hasData
+                });
+            }
+
+            console.log('🔍 Final word groups:', wordGroups);
+            return wordGroups;
+
+        } catch (error) {
+            console.error('❌ Failed to get word alignment, falling back to character-by-character:', error);
+            // Fallback to the old character-by-character method
+            return await this.extractCharacters(chineseText, pinyinText);
+        }
+    }
+
+    async getWordAlignment(englishPhrase, chineseText, pinyinText) {
+        try {
+            const apiKey = this.geminiApiKey || localStorage.getItem('geminiApiKey');
+            if (!apiKey) {
+                throw new Error('Google Gemini API key not found');
+            }
+
+            const prompt = `Align English words with their corresponding Chinese characters and pinyin. For the given English phrase and its Chinese translation, create a mapping that groups Chinese characters by their English word equivalents.
+
+English: "${englishPhrase}"
+Chinese: "${chineseText}"
+Pinyin: "${pinyinText}"
+
+Please provide the alignment in this exact JSON format:
+[
+  {"englishWord": "word1", "chineseChars": "字", "pinyin": "zì"},
+  {"englishWord": "word2", "chineseChars": "符合", "pinyin": "fú hé"}
+]
+
+Important rules:
+1. Group Chinese characters that together translate to one English word
+2. Each English word should map to its corresponding Chinese character(s)
+3. Preserve the pinyin for the grouped characters
+4. Return only the JSON array, no other text
+
+Example:
+English: "I like apples"
+Chinese: "我喜欢苹果"
+Pinyin: "wǒ xǐ huān píng guǒ"
+
+Result:
+[
+  {"englishWord": "I", "chineseChars": "我", "pinyin": "wǒ"},
+  {"englishWord": "like", "chineseChars": "喜欢", "pinyin": "xǐ huān"},
+  {"englishWord": "apples", "chineseChars": "苹果", "pinyin": "píng guǒ"}
+]`;
+
+            const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-goog-api-key': apiKey
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{ text: prompt }]
+                    }]
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Gemini API error: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const alignmentText = data.candidates[0].content.parts[0].text.trim();
+
+            console.log('🔍 Raw alignment response:', alignmentText);
+
+            // Parse the JSON response
+            const jsonMatch = alignmentText.match(/\[[\s\S]*\]/);
+            if (!jsonMatch) {
+                throw new Error('No valid JSON found in response');
+            }
+
+            const alignment = JSON.parse(jsonMatch[0]);
+            console.log('🔍 Parsed alignment:', alignment);
+
+            return alignment;
+
+        } catch (error) {
+            console.error('❌ Word alignment failed:', error);
+            throw error;
+        }
+    }
+
+    // Keep the old function for backward compatibility
     async extractCharacters(chineseText, pinyinText) {
         console.log('🔍 Extracting characters from:', { chineseText, pinyinText });
-        
+
         // Split Chinese text into individual characters
         const characters = [...chineseText].filter(char => char.trim() && char !== ' ');
         const pinyinSyllables = pinyinText.split(' ').filter(s => s.trim());
-        
+
         console.log('🔍 Character breakdown:', { characters, pinyinSyllables });
-        
+
         const characterData = [];
-        
+
         for (let i = 0; i < characters.length; i++) {
             const character = characters[i];
             const pinyin = pinyinSyllables[i] || '';
-            
+
             console.log(`🔍 Processing character ${i + 1}:`, { character, pinyin });
-            
+
             try {
                 // Try to fetch character data from API
                 const existing = await this.apiClient.getCharacter(character);
                 console.log(`✅ Found existing character data for ${character}:`, existing);
-                
+
                 characterData.push({
                     character,
                     pinyin,
@@ -3244,7 +3419,7 @@ Please provide only the Chinglish translation, no explanations:`;
                 });
             } catch (error) {
                 console.log(`❌ No character data found for ${character}, will need mnemonic`);
-                
+
                 // Character not found in database, mark for potential mnemonic generation
                 characterData.push({
                     character,
@@ -3257,7 +3432,7 @@ Please provide only the Chinglish translation, no explanations:`;
                 });
             }
         }
-        
+
         console.log('🔍 Final character data:', characterData);
         return characterData;
     }
@@ -3318,56 +3493,70 @@ Please provide only the Chinglish translation, no explanations:`;
         const imagesGrid = document.getElementById('syllable-images-grid');
         imagesGrid.innerHTML = '';
         
-        results.characters.forEach((characterData, index) => {
-            const characterCard = document.createElement('div');
-            characterCard.className = 'syllable-card';
-            
-            // Handle characters with mnemonic data
-            if (characterData.hasData && characterData.imageUrl) {
-                characterCard.innerHTML = `
+        results.characters.forEach((wordData, index) => {
+            const wordCard = document.createElement('div');
+            wordCard.className = 'word-group-card';
+
+            // Handle word groups with mnemonic data
+            if (wordData.hasData && wordData.imageUrl) {
+                wordCard.innerHTML = `
+                    <div class="word-group-header">
+                        <div class="english-word">${wordData.englishWord || wordData.meaning}</div>
+                    </div>
                     <div class="syllable-image">
-                        <img src="${characterData.imageUrl}" alt="Mnemonic for ${characterData.character}">
+                        <img src="${wordData.imageUrl}" alt="Mnemonic for ${wordData.character}">
                     </div>
                     <div class="syllable-info">
-                        <div class="syllable-text">${characterData.character}</div>
-                        <div class="syllable-pinyin">${characterData.pinyin}</div>
-                        <div class="syllable-description">${characterData.meaning || ''}</div>
-                        ${characterData.mnemonicStory ? `<div class="mnemonic-story">${characterData.mnemonicStory}</div>` : ''}
+                        <div class="syllable-text">${wordData.character}</div>
+                        <div class="syllable-pinyin">${wordData.pinyin}</div>
+                        <div class="syllable-description">${wordData.meaning || wordData.englishWord || ''}</div>
+                        ${wordData.mnemonicStory ? `<div class="mnemonic-story">${wordData.mnemonicStory}</div>` : ''}
                         <div class="character-status">✅ In Dictionary</div>
                     </div>
                 `;
-            } else if (characterData.hasData) {
+            } else if (wordData.hasData) {
                 // Has data but no image
-                characterCard.innerHTML = `
+                wordCard.innerHTML = `
+                    <div class="word-group-header">
+                        <div class="english-word">${wordData.englishWord || wordData.meaning}</div>
+                    </div>
                     <div class="syllable-placeholder">
                         <div class="no-image">💭</div>
                     </div>
                     <div class="syllable-info">
-                        <div class="syllable-text">${characterData.character}</div>
-                        <div class="syllable-pinyin">${characterData.pinyin}</div>
-                        <div class="syllable-description">${characterData.meaning || ''}</div>
-                        ${characterData.mnemonicStory ? `<div class="mnemonic-story">${characterData.mnemonicStory}</div>` : ''}
+                        <div class="syllable-text">${wordData.character}</div>
+                        <div class="syllable-pinyin">${wordData.pinyin}</div>
+                        <div class="syllable-description">${wordData.meaning || wordData.englishWord || ''}</div>
+                        ${wordData.mnemonicStory ? `<div class="mnemonic-story">${wordData.mnemonicStory}</div>` : ''}
                         <div class="character-status">✅ In Dictionary</div>
                     </div>
                 `;
             } else {
-                // No character data - show Add to Dictionary option
-                characterCard.innerHTML = `
+                // No mnemonic data available - only show Add to Dictionary for single characters
+                const isDictionaryWorthy = wordData.character && wordData.character.length === 1;
+                wordCard.innerHTML = `
+                    <div class="word-group-header">
+                        <div class="english-word">${wordData.englishWord || wordData.meaning}</div>
+                    </div>
                     <div class="syllable-placeholder">
-                        <div class="no-image">📝</div>
+                        <div class="no-image">🔍</div>
                     </div>
                     <div class="syllable-info">
-                        <div class="syllable-text">${characterData.character}</div>
-                        <div class="syllable-pinyin">${characterData.pinyin}</div>
-                        <div class="syllable-description">Not in dictionary yet</div>
-                        <button class="add-to-dictionary-btn" onclick="app.addCharacterToDictionary(${index})" title="Add this individual character to your personal dictionary for mnemonic study (not as a separate flashcard)">
-                            📚 Add Individual Character to Dictionary
-                        </button>
+                        <div class="syllable-text">${wordData.character}</div>
+                        <div class="syllable-pinyin">${wordData.pinyin}</div>
+                        <div class="syllable-description">Word group for "${wordData.englishWord}"</div>
+                        ${isDictionaryWorthy ? `
+                            <button class="add-to-dictionary-btn" onclick="app.addWordGroupToDictionary(${index})" title="Add this character to your personal dictionary for mnemonic study">
+                                📚 Add Character to Dictionary
+                            </button>
+                        ` : `
+                            <div class="word-group-note">Multi-character word - use complete phrase card instead</div>
+                        `}
                     </div>
                 `;
             }
-            
-            imagesGrid.appendChild(characterCard);
+
+            imagesGrid.appendChild(wordCard);
         });
         
         // Show results
