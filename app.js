@@ -3360,8 +3360,8 @@ Please provide only the Chinglish translation, no explanations:`;
                         <div class="syllable-text">${characterData.character}</div>
                         <div class="syllable-pinyin">${characterData.pinyin}</div>
                         <div class="syllable-description">Not in dictionary yet</div>
-                        <button class="add-to-dictionary-btn" onclick="app.addCharacterToDictionary(${index})" title="Add this character to your personal dictionary">
-                            📚 Add to Dictionary
+                        <button class="add-to-dictionary-btn" onclick="app.addCharacterToDictionary(${index})" title="Add this individual character to your personal dictionary for mnemonic study (not as a separate flashcard)">
+                            📚 Add Individual Character to Dictionary
                         </button>
                     </div>
                 `;

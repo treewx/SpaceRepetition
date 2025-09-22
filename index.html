@@ -150,7 +150,7 @@
             <section id="autogenerate-section" class="section">
                 <div class="autogenerate-header">
                     <h2>🤖 Auto Generate Cards</h2>
-                    <p>Enter English phrases to automatically translate to Chinese with pinyin and syllable images.</p>
+                    <p>Enter English phrases to automatically translate to Chinese. Creates ONE complete flashcard per phrase, not individual syllable cards.</p>
                 </div>
                 
                 <div class="autogenerate-input">
@@ -187,8 +187,14 @@
                     </div>
 
                     <div class="generate-actions">
-                        <button id="create-card-from-translation" class="btn primary">✨ Create Flash Card</button>
-                        <button id="save-translation" class="btn secondary">💾 Save Translation</button>
+                        <div class="action-emphasis">
+                            <h4>📚 Create Complete Word Card</h4>
+                            <p>This will create ONE flashcard with the complete English phrase and its Chinese translation:</p>
+                            <button id="create-card-from-translation" class="btn primary large">✨ Create Flash Card for Complete Phrase</button>
+                        </div>
+                        <div class="secondary-actions">
+                            <button id="save-translation" class="btn secondary">💾 Save Translation</button>
+                        </div>
                     </div>
                 </div>
             </section>

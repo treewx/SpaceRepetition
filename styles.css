@@ -1546,3 +1546,35 @@ main {
     white-space: nowrap;
     min-width: 120px;
 }
+
+/* Auto-generate action emphasis */
+.action-emphasis {
+    background: #f8fafc;
+    border: 2px solid #2563eb;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.action-emphasis h4 {
+    color: #2563eb;
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+}
+
+.action-emphasis p {
+    color: #64748b;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+.btn.large {
+    padding: 1rem 2rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.secondary-actions {
+    text-align: center;
+}
